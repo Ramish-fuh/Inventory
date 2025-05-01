@@ -1,0 +1,23 @@
+{
+  "name": "inventory",
+  "version": "1.0.0",
+  "description": "This project focuses on designing and implementing an efficient IT Asset Management System (ITAMS) tailored for small businesses. The goal is to improve asset tracking, maintenance, and compliance using a lightweight, scalable, and user-friendly application.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shuramishfuh/Inventory.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shuramishfuh/Inventory/issues"
+  },
+  "homepage": "https://github.com/shuramishfuh/Inventory#readme"
+}
