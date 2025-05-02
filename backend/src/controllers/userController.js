@@ -1,12 +1,19 @@
-
-
-
 import User from '../../models/User.js';
+import Log from '../../models/Log.js';
 
 // Create a new user
 export const createUser = async (req, res) => {
   try {
     const user = await User.create(req.body);
+
+    // Log the user creation action
+    await Log.create({
+      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      action: 'Create User',
+      target: user._id,
+      details: `User ${user.username} created.`
+    });
+
     res.status(201).json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -46,6 +53,15 @@ export const updateUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // Log the user update action
+    await Log.create({
+      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      action: 'Update User',
+      target: user._id,
+      details: `User ${user.username} updated.`
+    });
+
     res.status(200).json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -59,6 +75,15 @@ export const deleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // Log the user deletion action
+    await Log.create({
+      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      action: 'Delete User',
+      target: user._id,
+      details: `User ${user.username} deleted.`
+    });
+
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
