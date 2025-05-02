@@ -9,9 +9,9 @@ export const createUser = async (req, res) => {
     // Log the user creation action
     await Log.create({
       user: req.user.id, // Assuming `req.user` contains the logged-in user
-      action: 'Create User',
-      target: user._id,
-      details: `User ${user.username} created.`
+      action: 'User Created',
+      category: 'User Management',
+      details: `Created user with ID ${user._id}`,
     });
 
     res.status(201).json(user);
@@ -58,6 +58,7 @@ export const updateUser = async (req, res) => {
     await Log.create({
       user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Update User',
+      category: 'User Management',
       target: user._id,
       details: `User ${user.username} updated.`
     });
@@ -80,6 +81,7 @@ export const deleteUser = async (req, res) => {
     await Log.create({
       user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Delete User',
+      category: 'User Management',
       target: user._id,
       details: `User ${user.username} deleted.`
     });

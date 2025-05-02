@@ -23,6 +23,15 @@ export const getAssetById = async (req, res) => {
   try {
     const asset = await Asset.findById(req.params.id);
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
+
+    // Log the asset fetching action
+    await Log.create({
+      user: req.user.id,
+      action: 'Asset Fetched',
+      category: 'Asset Management',
+      details: `Fetched asset with ID ${req.params.id}`,
+    });
+
     res.json(asset);
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
@@ -41,6 +50,7 @@ export const createAsset = async (req, res) => {
     await Log.create({
       user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Create Asset',
+      category: 'Asset Management',
       target: savedAsset._id,
       details: `Asset ${savedAsset.name} created.`
     });
@@ -63,6 +73,7 @@ export const updateAsset = async (req, res) => {
     await Log.create({
       user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Update Asset',
+      category: 'Asset Management',
       target: updatedAsset._id,
       details: `Asset ${updatedAsset.name} updated.`
     });
@@ -85,6 +96,7 @@ export const deleteAsset = async (req, res) => {
     await Log.create({
       user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Delete Asset',
+      category: 'Asset Management',
       target: deletedAsset._id,
       details: `Asset ${deletedAsset.name} deleted.`
     });

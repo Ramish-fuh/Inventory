@@ -29,7 +29,8 @@ export const loginUser = async (req, res) => {
         await Log.create({
             user: user._id,
             action: 'User Login',
-            details: `User ${username} logged in.`
+            category: 'Authentication',
+            details: `User ${username} logged in successfully.`,
         });
 
         res.json({ token });
@@ -63,6 +64,13 @@ export const recoverPassword = async (req, res) => {
         await sendEmail(email, 'Password Recovery', `Reset your password here: ${resetUrl}`);
         logger.info('Password recovery email sent successfully to:', email); // Debugging log
 
+        await Log.create({
+          user: user._id,
+          action: 'Password Recovery Requested',
+          category: 'Password Management',
+          details: `Password recovery email sent to ${email}`,
+        });
+
         res.status(200).json({ message: 'Password recovery email sent check your email' });
     } catch (error) {
         logger.error('Error in recoverPassword controller:', error); // Debugging log
@@ -91,6 +99,14 @@ export const resetPassword = async (req, res) => {
     await user.save();
 
     logger.info('Password reset successfully for user:', user.email); // Debugging log
+
+    await Log.create({
+      user: user._id,
+      action: 'Password Reset',
+      category: 'Password Management',
+      details: `Password reset successfully for user ${user.email}`,
+    });
+
     res.status(200).json({ message: 'Password has been reset' });
   } catch (error) {
     logger.error('Error in resetPassword controller:', error); // Debugging log
