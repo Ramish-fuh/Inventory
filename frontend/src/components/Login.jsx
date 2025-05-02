@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 // Replace `jwtDecode` with a custom function to decode JWT tokens
 function decodeJWT(token) {
@@ -68,6 +69,9 @@ function Login() {
         onChange={(e) => setPassword(e.target.value)}
       />
       <button onClick={handleLogin}>Login</button>
+      <Link to="/recover-password" style={{ display: 'block', marginTop: '10px' }}>
+        Forgot Password?
+      </Link>
     </div>
   );
 }

@@ -6,6 +6,8 @@ import Login from './components/Login';
 import { jwtDecode } from 'jwt-decode';
 import PrivateRoute from './components/PrivateRoute';
 import LogoutButton from './components/LogoutButton';
+import RecoverPassword from './components/RecoverPassword';
+import ResetPassword from './components/ResetPassword';
 
 function App() {
   const token = localStorage.getItem('token');
@@ -19,6 +21,10 @@ function App() {
         <Routes>
           {/* Login Route */}
           <Route path="/login" element={<Login />} />
+
+          {/* Password Recovery and Reset Routes */}
+          <Route path="/recover-password" element={<RecoverPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Protect admin-dashboard with PrivateRoute */}
           <Route
