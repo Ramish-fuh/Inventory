@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Button, Grid } from '@mui/material';
+import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Button, Grid, Dialog } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import EditIcon from '@mui/icons-material/Edit';
@@ -9,6 +9,8 @@ import axios from 'axios';
 import apiClient from '../index';
 import EditAssetForm from './EditAssetForm';
 import styles from './Dashboard.module.css';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
+import AddAssetModal from './AddAssetModal';
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -23,6 +25,8 @@ function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('');
   const [assignedToFilter, setAssignedToFilter] = useState('');
   const [editingAsset, setEditingAsset] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteModalAsset, setDeleteModalAsset] = useState(null);
 
   useEffect(() => {
     apiClient.get('/api/assets')
@@ -51,11 +55,11 @@ function AdminDashboard() {
   // Handle search and sort whenever the criteria change
   useEffect(() => {
     let filtered = [...assets];
-    
+
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(asset => 
+      filtered = filtered.filter(asset =>
         asset.name?.toLowerCase().includes(query) ||
         asset.category?.toLowerCase().includes(query) ||
         asset.assignedTo?.toLowerCase().includes(query) ||
@@ -67,22 +71,22 @@ function AdminDashboard() {
     filtered.sort((a, b) => {
       let aValue = a[sortBy];
       let bValue = b[sortBy];
-      
+
       // Handle null/undefined values
       if (aValue === null || aValue === undefined) return sortOrder === 'asc' ? -1 : 1;
       if (bValue === null || bValue === undefined) return sortOrder === 'asc' ? 1 : -1;
-      
+
       // Convert to strings for string comparison
       if (typeof aValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
-      
+
       // Handle numeric values
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
       }
-      
+
       // String comparison
       if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
@@ -142,7 +146,7 @@ function AdminDashboard() {
       }
 
       const response = await apiClient.get(`/api/qr/${assetId}`);
-      
+
       // Create and style the QR code window
       const qrWindow = window.open('', '_blank');
       qrWindow.document.write(`
@@ -226,11 +230,11 @@ function AdminDashboard() {
       const response = await apiClient.get(`/api/assets/export/${format}`, {
         responseType: 'blob'
       });
-      
+
       const blob = new Blob([response.data], {
         type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -241,6 +245,24 @@ function AdminDashboard() {
       document.body.removeChild(a);
     } catch (error) {
       console.error(`Error exporting to ${format}:`, error);
+    }
+  };
+
+  const handleDeleteClick = (asset) => {
+    setDeleteModalAsset(asset);
+  };
+
+  const handleDeleteConfirm = async (assetId) => {
+    try {
+      await apiClient.delete(`/api/assets/${assetId}`);
+      fetchAssets();
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+      }
     }
   };
 
@@ -259,6 +281,14 @@ function AdminDashboard() {
           <h1>Admin Dashboard</h1>
           <p className={styles.subtitle}>Manage your inventory assets</p>
           <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setIsAddModalOpen(true)}
+              style={{ marginRight: '8px' }}
+            >
+              Add Asset
+            </Button>
             <Button
               variant="contained"
               startIcon={<FileDownloadIcon />}
@@ -284,14 +314,14 @@ function AdminDashboard() {
             <h3>Total Assets</h3>
             <p className={styles.statNumber}>{assets.length}</p>
           </div>
-          
+
           <div className={styles.statCard}>
             <h3>Active Assets</h3>
             <p className={styles.statNumber}>
               {assets.filter(asset => asset.status === 'In Use').length}
             </p>
           </div>
-          
+
           <div className={styles.statCard}>
             <h3>Available Assets</h3>
             <p className={styles.statNumber}>
@@ -303,7 +333,7 @@ function AdminDashboard() {
         <section className={styles.assetsSection}>
           <div className={styles.controls}>
             <Grid container spacing={3} sx={{ mb: 3 }}>
-              <Grid size={{ xs:12,  lg:3}}>
+              <Grid size={{ xs: 12, lg: 3 }}>
                 <TextField
                   fullWidth
                   label="Search assets"
@@ -312,7 +342,7 @@ function AdminDashboard() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </Grid>
-              <Grid size={{ xs:12, lg:3 }}>
+              <Grid size={{ xs: 12, lg: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel>Category</InputLabel>
                   <Select
@@ -330,7 +360,7 @@ function AdminDashboard() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{xs:12, lg:3}}>
+              <Grid size={{ xs: 12, lg: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel>Status</InputLabel>
                   <Select
@@ -346,7 +376,7 @@ function AdminDashboard() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{xs:12, lg:3}}>
+              <Grid size={{ xs: 12, lg: 3 }}>
                 <TextField
                   fullWidth
                   label="Assigned To"
@@ -361,8 +391,8 @@ function AdminDashboard() {
 
           <Grid container spacing={3}>
             {displayedAssets.map(asset => (
-              <Grid size={{xs:12, lg:6, xl:4}} key={asset._id}>
-                <Card 
+              <Grid size={{ xs: 12, lg: 6, xl: 4 }} key={asset._id}>
+                <Card
                   className={styles.assetCard}
                   style={{ margin: 0, padding: 0 }}
                 >
@@ -396,13 +426,13 @@ function AdminDashboard() {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete Asset">
-                        <IconButton onClick={() => handleDelete(asset._id)}>
+                        <IconButton onClick={() => handleDeleteClick(asset)}>
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
                     </div>
-                    <Link 
-                      to={`/assets/${asset._id}`} 
+                    <Link
+                      to={`/assets/${asset._id}`}
                       className={styles.viewDetailsLink}
                       style={{ marginTop: 'auto' }}
                     >
@@ -416,15 +446,33 @@ function AdminDashboard() {
         </section>
       </main>
 
+      {/* Modals */}
+      <AddAssetModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAssetAdded={(newAsset) => {
+          fetchAssets();
+        }}
+      />
+
+      <DeleteConfirmationModal
+        open={!!deleteModalAsset}
+        onClose={() => setDeleteModalAsset(null)}
+        onConfirm={handleDeleteConfirm}
+        asset={deleteModalAsset}
+      />
+
       {editingAsset && (
-        <EditAssetForm
-          asset={editingAsset}
-          onClose={() => setEditingAsset(null)}
-          onSave={() => {
-            setEditingAsset(null);
-            fetchAssets();
-          }}
-        />
+        <Dialog open={true} onClose={() => setEditingAsset(null)} maxWidth="md" fullWidth>
+          <EditAssetForm
+            asset={editingAsset}
+            onClose={() => setEditingAsset(null)}
+            onUpdate={(updatedAsset) => {
+              setEditingAsset(null);
+              fetchAssets();
+            }}
+          />
+        </Dialog>
       )}
     </div>
   );

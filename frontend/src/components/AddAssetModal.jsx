@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,13 +10,13 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  FormHelperText,
+  FormHelperText
 } from '@mui/material';
 import apiClient from '../index';
 import styles from './EditAssetForm.module.css';
 
-const EditAssetForm = ({ asset, onClose, onUpdate }) => {
-  const [formData, setFormData] = useState({
+const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
+  const initialFormData = {
     name: '',
     assetTag: '',
     category: '',
@@ -31,32 +31,10 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
     nextMaintenance: '',
     maintenanceInterval: '',
     lastMaintenance: ''
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
-  const [userSuggestions, setUserSuggestions] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-
-  useEffect(() => {
-    if (asset) {
-      setFormData({
-        name: asset.name || '',
-        assetTag: asset.assetTag || '',
-        category: asset.category || '',
-        status: asset.status || '',
-        assignedTo: asset.assignedTo || '',
-        location: asset.location || '',
-        notes: asset.notes || '',
-        serialNumber: asset.serialNumber || '',
-        purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().split('T')[0] : '',
-        warrantyExpiry: asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toISOString().split('T')[0] : '',
-        licenseExpiry: asset.licenseExpiry ? new Date(asset.licenseExpiry).toISOString().split('T')[0] : '',
-        nextMaintenance: asset.nextMaintenance ? new Date(asset.nextMaintenance).toISOString().split('T')[0] : '',
-        maintenanceInterval: asset.maintenanceInterval || '',
-        lastMaintenance: asset.lastMaintenance ? new Date(asset.lastMaintenance).toISOString().split('T')[0] : ''
-      });
-    }
-  }, [asset]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -69,62 +47,22 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
       newErrors.maintenanceInterval = 'Must be a number';
     }
 
-    // Validate dates
-    const today = new Date();
-    const purchaseDate = formData.purchaseDate ? new Date(formData.purchaseDate) : null;
-    const warrantyExpiry = formData.warrantyExpiry ? new Date(formData.warrantyExpiry) : null;
-    const licenseExpiry = formData.licenseExpiry ? new Date(formData.licenseExpiry) : null;
-    
-    if (purchaseDate && purchaseDate > today) {
-      newErrors.purchaseDate = 'Purchase date cannot be in the future';
-    }
-    
-    if (warrantyExpiry && purchaseDate && warrantyExpiry < purchaseDate) {
-      newErrors.warrantyExpiry = 'Warranty expiry must be after purchase date';
-    }
-    
-    if (licenseExpiry && purchaseDate && licenseExpiry < purchaseDate) {
-      newErrors.licenseExpiry = 'License expiry must be after purchase date';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleUserSearch = async (value) => {
-    if (value.length < 2) {
-      setUserSuggestions([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await apiClient.get(`/api/users/search?query=${value}`);
-      setUserSuggestions(response.data);
-    } catch (err) {
-      console.error('Error searching users:', err);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleChange = async (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-
     // Clear error when field is edited
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
         [name]: undefined
       }));
-    }
-
-    if (name === 'assignedTo') {
-      handleUserSearch(value);
     }
   };
 
@@ -133,22 +71,23 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
     if (!validateForm()) return;
 
     try {
-      const response = await apiClient.put(`/api/assets/${asset._id}`, formData);
-      onUpdate(response.data);
+      const response = await apiClient.post('/api/assets', formData);
+      onAssetAdded(response.data);
+      setFormData(initialFormData);
       onClose();
-    } catch (err) {
-      const serverErrors = err.response?.data?.errors || {};
+    } catch (error) {
+      const serverErrors = error.response?.data?.errors || {};
       setErrors(prev => ({
         ...prev,
         ...serverErrors,
-        submit: err.response?.data?.message || 'Error updating asset'
+        submit: error.response?.data?.message || 'Error creating asset'
       }));
     }
   };
 
   return (
-    <>
-      <DialogTitle>Edit Asset</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Add New Asset</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           {errors.submit && (
@@ -240,8 +179,6 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               type="date"
               value={formData.purchaseDate}
               onChange={handleChange}
-              error={!!errors.purchaseDate}
-              helperText={errors.purchaseDate}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -252,8 +189,6 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               type="date"
               value={formData.warrantyExpiry}
               onChange={handleChange}
-              error={!!errors.warrantyExpiry}
-              helperText={errors.warrantyExpiry}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -264,8 +199,6 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               type="date"
               value={formData.licenseExpiry}
               onChange={handleChange}
-              error={!!errors.licenseExpiry}
-              helperText={errors.licenseExpiry}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -287,8 +220,6 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               type="date"
               value={formData.lastMaintenance}
               onChange={handleChange}
-              error={!!errors.lastMaintenance}
-              helperText={errors.lastMaintenance}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -309,12 +240,12 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
           <Button type="submit" variant="contained" color="primary">
-            Save Changes
+            Create Asset
           </Button>
         </DialogActions>
       </form>
-    </>
+    </Dialog>
   );
 };
 
-export default EditAssetForm;
+export default AddAssetModal;
