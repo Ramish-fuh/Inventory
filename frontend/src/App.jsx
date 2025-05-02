@@ -4,6 +4,8 @@ import AdminDashboard from './components/AdminDashboard';
 import UserDashboard from './components/UserDashboard';
 import Login from './components/Login';
 import { jwtDecode } from 'jwt-decode';
+import PrivateRoute from './components/PrivateRoute';
+import LogoutButton from './components/LogoutButton';
 
 function App() {
   const token = localStorage.getItem('token');
@@ -12,27 +14,31 @@ function App() {
 
   return (
     <Router>
-      <Routes>
-        {/* Login Route */}
-        <Route path="/login" element={<Login />} />
+      <div>
+        {localStorage.getItem('token') && <LogoutButton />} {/* Show LogoutButton only if logged in */}
+        <Routes>
+          {/* Login Route */}
+          <Route path="/login" element={<Login />} />
 
-        {/* Conditionally render routes based on user role */}
-        {userRole === 'Admin' && (
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        )}
-        {userRole === 'user' && (
-          <Route path="/user-dashboard" element={<UserDashboard />} />
-        )}
-        {!userRole && (
+          {/* Protect admin-dashboard with PrivateRoute */}
+          <Route
+            path="/admin-dashboard"
+            element={<PrivateRoute element={<AdminDashboard />} role="Admin" />}
+          />
+
+          {/* Protect user-dashboard with PrivateRoute */}
+          <Route
+            path="/user-dashboard"
+            element={<PrivateRoute element={<UserDashboard />} role="user" />}
+          />
+
+          {/* Default route */}
+          <Route path="/" element={<div>Please log in</div>} />
+
+          {/* Add a fallback route to handle unmatched locations */}
           <Route path="*" element={<Login />} />
-        )}
-
-        {/* Default route */}
-        <Route path="/" element={<div>Please log in</div>} />
-
-        {/* Add a fallback route to handle unmatched locations */}
-        <Route path="*" element={<Login />} />
-      </Routes>
+        </Routes>
+      </div>
     </Router>
   );
 }
