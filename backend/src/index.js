@@ -7,35 +7,12 @@ import userRoutes from './routes/userRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import authMiddleware from './middleware/authMiddleware.js';
-// import bcrypt from 'bcryptjs';
-// import User from '../models/User.js';
+import logger from './utils/logger.js';
 
 dotenv.config();
 connectDB();
 
-// define the default user creation function
-// const createDefaultUser = async () => {
-//   try {
-//     const existing = await User.findOne({ username: 'admin' });
-//     if (!existing) {
-//       const hashedPassword = await bcrypt.hash('admin123', 10);
-//       await User.create({
-//         username: 'admin',
-//         fullName: 'Default Admin',
-//         email: 'admin@example.com',
-//         passwordHash: hashedPassword,
-//         role: 'Admin'
-//       });
-//       console.log('✅ Default admin user created: admin / admin123');
-//     } else {
-//       console.log('ℹ️ Default admin user already exists.');
-//     }
-//   } catch (error) {
-//     console.error('❌ Error creating default admin user:', error.message);
-//   }
-// };
 
-// createDefaultUser();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -56,5 +33,5 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/logs', logRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
 });

@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import logger from '../utils/logger.js';
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -18,7 +19,7 @@ const authMiddleware = (req, res, next) => {
     // Proceed to the next middleware or route handler
     next();
   } catch (err) {
-    console.error('JWT verification failed:', err.message);
+    logger.error('JWT verification failed:', err.message);
     res.status(401).json({ message: 'You could not be logged in' });
   }
 };

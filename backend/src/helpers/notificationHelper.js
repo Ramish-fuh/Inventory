@@ -1,4 +1,5 @@
 import Notification from '../models/Notification.js';
+import logger from '../utils/logger.js'; // Import a custom logger utility
 
 // Function to create a new notification
 export const createNotification = async (user, type, message) => {
@@ -10,8 +11,8 @@ export const createNotification = async (user, type, message) => {
     });
 
     await newNotification.save();  // Save the notification to the database
-    console.log('Notification created:', newNotification);
+    logger.info('Notification created:', newNotification); // Use logger instead of console.log
   } catch (error) {
-    console.error('Error creating notification:', error);
+    logger.error('Error creating notification:', error); // Use logger instead of console.error
   }
 };

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
-import Log from '../../models/Log.js';
-import Asset from '../../models/Asset.js';
+import Log from '../models/Log.js';
+import Asset from '../models/Asset.js';
+import logger from '../utils/logger.js';
 
 // @desc    Get all assets
 // @route   GET /api/assets
@@ -10,7 +11,7 @@ export const getAssets = async (req, res) => {
     const assets = await Asset.find();
     res.json(assets);
   } catch (error) {
-    console.error('🔥 Error fetching assets:', error);
+    logger.error('🔥 Error fetching assets:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };

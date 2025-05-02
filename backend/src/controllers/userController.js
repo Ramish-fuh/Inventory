@@ -1,5 +1,5 @@
-import User from '../../models/User.js';
-import Log from '../../models/Log.js';
+import User from '../models/User.js';
+import Log from '../models/Log.js';
 
 // Create a new user
 export const createUser = async (req, res) => {

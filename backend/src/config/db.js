@@ -1,11 +1,12 @@
 import { connect } from 'mongoose';
+import logger from '../utils/logger.js';
 
 const connectDB = async () => {
   try {
     await connect(process.env.MONGO_URI || 'mongodb://localhost:27017/asset-manager');
-    console.log('✅ MongoDB connected successfully');
+    logger.info('✅ MongoDB connected successfully');
   } catch (error) {
-    console.error('❌ MongoDB connection failed:', error.message);
+    logger.error('❌ MongoDB connection failed:', error.message);
     process.exit(1);
   }
 };

@@ -1,5 +1,5 @@
 
-import Log from '../../models/Log.js';
+import Log from '../models/Log.js';
 
 // Create a new log entry
 export const createLog = async (req, res) => {
