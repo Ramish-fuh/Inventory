@@ -1,18 +1,61 @@
 import mongoose from 'mongoose';
 import Log from '../models/Log.js';
 import Asset from '../models/Asset.js';
+import User from '../models/User.js';
 import logger from '../utils/logger.js';
+import { generateQRCodeBuffer } from '../utils/genQr.js';
 
-// @desc    Get all assets
-// @route   GET /api/assets
-// @access  Public
+// Get all assets with filtering and search
 export const getAssets = async (req, res) => {
   try {
-    const assets = await Asset.find();
+    const { search, category, status, assignedTo } = req.query;
+    const query = {};
+
+    // Search by name, description, or serial number
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { serialNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Filter by category
+    if (category) {
+      query.category = category;
+    }
+
+    // Filter by status
+    if (status) {
+      query.status = status;
+    }
+
+    // Filter by assigned user
+    if (assignedTo) {
+      // First find the user by name or username
+      const user = await User.findOne({
+        $or: [
+          { username: { $regex: assignedTo, $options: 'i' } },
+          { fullName: { $regex: assignedTo, $options: 'i' } }
+        ]
+      });
+
+      if (user) {
+        query.assignedTo = user._id;
+      } else {
+        // If no user found, return empty results
+        return res.json([]);
+      }
+    }
+
+    const assets = await Asset.find(query)
+      .populate('assignedTo', 'username fullName email')
+      .sort({ createdAt: -1 });
+
     res.json(assets);
   } catch (error) {
-    logger.error('🔥 Error fetching assets:', error);
-    res.status(500).json({ message: 'Server Error' });
+    logger.error('Error getting assets:', error);
+    res.status(500).json({ message: 'Error getting assets' });
   }
 };
 

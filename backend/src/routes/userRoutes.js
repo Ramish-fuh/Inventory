@@ -1,25 +1,25 @@
 import express from 'express';
+import { getUsers, getUserById, createUser, updateUser, deleteUser } from '../controllers/userController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
-import { getUsers, getUserById, createUser, updateUser, deleteUser, searchUsers } from '../controllers/userController.js';
 
 const router = express.Router();
 
-// GET search users for autocomplete
-router.get('/search', authMiddleware, searchUsers);
+// Protect all routes
+router.use(authMiddleware);
 
-// GET all users
-router.get('/', authMiddleware, getUsers);
+// Get all users - Admin only
+router.get('/', getUsers);
 
-// GET single user by ID
-router.get('/:id', authMiddleware, getUserById);
+// Get single user by ID - Admin only
+router.get('/:id', getUserById);
 
-// POST create new user
-router.post('/', authMiddleware, createUser);
+// Create new user - Admin only
+router.post('/', createUser);
 
-// PUT update user by ID
-router.put('/:id', authMiddleware, updateUser);
+// Update user - Admin only
+router.put('/:id', updateUser);
 
-// DELETE user by ID
-router.delete('/:id', authMiddleware, deleteUser);
+// Delete user - Admin only
+router.delete('/:id', deleteUser);
 
 export default router;

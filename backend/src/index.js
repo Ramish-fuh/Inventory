@@ -6,14 +6,13 @@ import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
 import logRoutes from './routes/logRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import { generateQRCode } from './utils/genQr.js';
 import authMiddleware from './middleware/authMiddleware.js';
 import logger from './utils/logger.js';
 
 dotenv.config();
 connectDB();
-
-
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -33,6 +32,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/assets', assetRoutes); 
 app.use('/api/logs', logRoutes);
 app.use('/api/qr', generateQRCode); 
+app.use('/api/notifications', notificationRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logger.error(err.stack);
+  res.status(500).send('Something broke!');
+});
 
 app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
