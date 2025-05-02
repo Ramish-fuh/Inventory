@@ -5,80 +5,112 @@ import { createNotification } from '../helpers/notificationHelper.js';
 import logger from '../utils/logger.js';
 
 const CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
-const NOTIFICATION_THRESHOLD = 15; // days before expiry/maintenance to notify
+const NOTIFICATION_THRESHOLDS = {
+  CRITICAL: 7,  // 7 days
+  WARNING: 15,  // 15 days
+  NOTICE: 30    // 30 days
+};
 
 export const startNotificationScheduler = () => {
+  checkAssets(); // Run immediately on startup
   setInterval(checkAssets, CHECK_INTERVAL);
   logger.info('Notification scheduler started');
 };
 
+const getExpiryStatus = (expiryDate) => {
+  if (!expiryDate) return null;
+  
+  const daysUntilExpiry = Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+  
+  if (daysUntilExpiry <= NOTIFICATION_THRESHOLDS.CRITICAL) {
+    return 'CRITICAL';
+  } else if (daysUntilExpiry <= NOTIFICATION_THRESHOLDS.WARNING) {
+    return 'WARNING';
+  } else if (daysUntilExpiry <= NOTIFICATION_THRESHOLDS.NOTICE) {
+    return 'NOTICE';
+  }
+  return null;
+};
+
 const checkAssets = async () => {
   try {
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() + NOTIFICATION_THRESHOLD);
-
-    // Get admin users for notifications
     const adminUsers = await User.find({ role: 'Admin' });
     if (!adminUsers.length) {
       logger.warn('No admin users found for notifications');
       return;
     }
 
-    // Check license expiry
-    const assetsWithExpiringLicense = await Asset.find({
-      licenseExpiry: {
-        $gte: new Date(),
-        $lte: thresholdDate
-      }
+    // Get all assets that need attention
+    const assets = await Asset.find({
+      $or: [
+        { licenseExpiry: { $exists: true, $ne: null } },
+        { warrantyExpiry: { $exists: true, $ne: null } },
+        { nextMaintenance: { $exists: true, $ne: null } }
+      ]
     });
 
-    // Check maintenance due
-    const assetsNeedingMaintenance = await Asset.find({
-      nextMaintenance: {
-        $gte: new Date(),
-        $lte: thresholdDate
-      }
-    });
-
-    // Send notifications for license expiry
-    for (const asset of assetsWithExpiringLicense) {
-      const daysUntilExpiry = Math.ceil((asset.licenseExpiry - new Date()) / (1000 * 60 * 60 * 24));
-      const message = `License for ${asset.name} will expire in ${daysUntilExpiry} days`;
-      
-      // Create in-app notification for each admin
-      for (const admin of adminUsers) {
-        await createNotification(admin, 'license', message);
+    for (const asset of assets) {
+      // Check license expiry
+      const licenseStatus = getExpiryStatus(asset.licenseExpiry);
+      if (licenseStatus) {
+        const daysUntilExpiry = Math.ceil((new Date(asset.licenseExpiry) - new Date()) / (1000 * 60 * 60 * 24));
+        const message = `${licenseStatus}: License for ${asset.name} will expire in ${daysUntilExpiry} days`;
         
-        // Send email notification
-        await sendEmailNotification(
-          admin.email,
-          'License Expiry Alert',
-          `Dear ${admin.fullName},\n\n${message}\n\nPlease take necessary action to renew the license.`
-        );
+        for (const admin of adminUsers) {
+          await createNotification(admin, 'license', message);
+          await sendEmailNotification(
+            admin.email,
+            `${licenseStatus} - License Expiry Alert`,
+            `Dear ${admin.fullName},\n\n${message}\n\nPlease take necessary action to renew the license.`
+          );
+        }
       }
-      
-      logger.info(`License expiry notification sent for asset: ${asset.name}`);
-    }
 
-    // Send notifications for maintenance due
-    for (const asset of assetsNeedingMaintenance) {
-      const daysUntilMaintenance = Math.ceil((asset.nextMaintenance - new Date()) / (1000 * 60 * 60 * 24));
-      const message = `Maintenance due for ${asset.name} in ${daysUntilMaintenance} days`;
-      
-      // Create in-app notification for each admin
-      for (const admin of adminUsers) {
-        await createNotification(admin, 'maintenance', message);
+      // Check warranty expiry
+      const warrantyStatus = getExpiryStatus(asset.warrantyExpiry);
+      if (warrantyStatus) {
+        const daysUntilExpiry = Math.ceil((new Date(asset.warrantyExpiry) - new Date()) / (1000 * 60 * 60 * 24));
+        const message = `${warrantyStatus}: Warranty for ${asset.name} will expire in ${daysUntilExpiry} days`;
         
-        // Send email notification
-        await sendEmailNotification(
-          admin.email,
-          'Maintenance Due Alert',
-          `Dear ${admin.fullName},\n\n${message}\n\nPlease schedule maintenance for this asset.`
-        );
+        for (const admin of adminUsers) {
+          await createNotification(admin, 'warranty', message);
+          await sendEmailNotification(
+            admin.email,
+            `${warrantyStatus} - Warranty Expiry Alert`,
+            `Dear ${admin.fullName},\n\n${message}\n\nPlease review warranty renewal options.`
+          );
+        }
       }
-      
-      logger.info(`Maintenance notification sent for asset: ${asset.name}`);
+
+      // Check maintenance due
+      const maintenanceStatus = getExpiryStatus(asset.nextMaintenance);
+      if (maintenanceStatus) {
+        const daysUntilMaintenance = Math.ceil((new Date(asset.nextMaintenance) - new Date()) / (1000 * 60 * 60 * 24));
+        const message = `${maintenanceStatus}: Maintenance due for ${asset.name} in ${daysUntilMaintenance} days`;
+        
+        for (const admin of adminUsers) {
+          await createNotification(admin, 'maintenance', message);
+          await sendEmailNotification(
+            admin.email,
+            `${maintenanceStatus} - Maintenance Due Alert`,
+            `Dear ${admin.fullName},\n\n${message}\n\nPlease schedule maintenance for this asset.`
+          );
+        }
+      }
+
+      // Update next maintenance date if maintenance was performed
+      if (asset.lastMaintenance && asset.maintenanceInterval) {
+        const nextMaintenanceDate = new Date(asset.lastMaintenance);
+        nextMaintenanceDate.setDate(nextMaintenanceDate.getDate() + asset.maintenanceInterval);
+        
+        if (nextMaintenanceDate > new Date()) {
+          asset.nextMaintenance = nextMaintenanceDate;
+          await asset.save();
+        }
+      }
     }
+    
+    logger.info(`Completed notification check for ${assets.length} assets`);
   } catch (error) {
     logger.error('Error in notification scheduler:', error);
   }

@@ -9,6 +9,9 @@ import {
   Divider
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import BuildIcon from '@mui/icons-material/Build';
+import KeyIcon from '@mui/icons-material/Key';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import apiClient from '../index';
 
 const NotificationBell = () => {
@@ -53,15 +56,35 @@ const NotificationBell = () => {
     handleClose();
   };
 
-  const getNotificationStyle = (type) => {
-    switch (type) {
-      case 'license':
-        return { color: '#f44336' }; // Red for license expiry
-      case 'maintenance':
-        return { color: '#ff9800' }; // Orange for maintenance
-      default:
-        return { color: 'inherit' };
+  const getNotificationStyle = (type, message) => {
+    let color = 'inherit';
+    let Icon = NotificationsIcon;
+    
+    // Check severity level
+    if (message.startsWith('CRITICAL')) {
+      color = '#d32f2f'; // Dark red
+    } else if (message.startsWith('WARNING')) {
+      color = '#ed6c02'; // Orange
+    } else if (message.startsWith('NOTICE')) {
+      color = '#0288d1'; // Blue
     }
+
+    // Set icon based on type
+    switch (type) {
+      case 'maintenance':
+        Icon = BuildIcon;
+        break;
+      case 'license':
+        Icon = KeyIcon;
+        break;
+      case 'warranty':
+        Icon = VerifiedUserIcon;
+        break;
+      default:
+        Icon = NotificationsIcon;
+    }
+
+    return { color, Icon };
   };
 
   return (
@@ -87,30 +110,34 @@ const NotificationBell = () => {
             <ListItemText primary="No notifications" />
           </MenuItem>
         ) : (
-          notifications.map((notification, index) => (
-            <React.Fragment key={notification._id}>
-              <MenuItem 
-                onClick={() => handleNotificationClick(notification)}
-                style={{ 
-                  backgroundColor: notification.read ? 'inherit' : 'rgba(0, 0, 0, 0.04)',
-                  padding: '12px 16px'
-                }}
-              >
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="subtitle2" 
-                      style={getNotificationStyle(notification.type)}
-                    >
-                      {notification.message}
-                    </Typography>
-                  }
-                  secondary={new Date(notification.createdAt).toLocaleString()}
-                />
-              </MenuItem>
-              {index < notifications.length - 1 && <Divider />}
-            </React.Fragment>
-          ))
+          notifications.map((notification, index) => {
+            const { color, Icon } = getNotificationStyle(notification.type, notification.message);
+            return (
+              <React.Fragment key={notification._id}>
+                <MenuItem 
+                  onClick={() => handleNotificationClick(notification)}
+                  style={{ 
+                    backgroundColor: notification.read ? 'inherit' : 'rgba(0, 0, 0, 0.04)',
+                    padding: '12px 16px'
+                  }}
+                >
+                  <Icon style={{ marginRight: '12px', color }} />
+                  <ListItemText
+                    primary={
+                      <Typography 
+                        variant="subtitle2" 
+                        style={{ color }}
+                      >
+                        {notification.message}
+                      </Typography>
+                    }
+                    secondary={new Date(notification.createdAt).toLocaleString()}
+                  />
+                </MenuItem>
+                {index < notifications.length - 1 && <Divider />}
+              </React.Fragment>
+            );
+          })
         )}
       </Menu>
     </>
