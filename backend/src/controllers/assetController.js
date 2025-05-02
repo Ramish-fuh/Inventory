@@ -1,6 +1,4 @@
-
-
-import Asset from '../models/Asset.js';
+import mongoose from 'mongoose';
 
 // @desc    Get all assets
 // @route   GET /api/assets

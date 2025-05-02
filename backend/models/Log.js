@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const LogSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -8,4 +8,6 @@ const LogSchema = new mongoose.Schema({
   details: { type: String } // Optional: additional context or notes
 });
 
-module.exports = mongoose.model('Log', LogSchema);
+const Log = mongoose.model('Log', LogSchema);
+
+export default Log;

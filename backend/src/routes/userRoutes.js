@@ -1,32 +1,22 @@
 import express from 'express';
 import authMiddleware from '../middleware/authMiddleware.js';
-
+import { getUsers, getUserById, createUser, updateUser, deleteUser } from '../controllers/userController.js';
 
 const router = express.Router();
 
 // GET all users
-router.get('/', authMiddleware, (req, res) => {
-  res.send('Get all users');
-});
+router.get('/', authMiddleware, getUsers);
 
 // GET single user by ID
-router.get('/:id', authMiddleware, (req, res) => {
-  res.send(`Get user with ID ${req.params.id}`);
-});
+router.get('/:id', authMiddleware, getUserById);
 
 // POST create new user
-router.post('/', authMiddleware, (req, res) => {
-  res.send('Create a new user');
-});
+router.post('/', authMiddleware, createUser);
 
 // PUT update user by ID
-router.put('/:id', authMiddleware, (req, res) => {
-  res.send(`Update user with ID ${req.params.id}`);
-});
+router.put('/:id', authMiddleware, updateUser);
 
 // DELETE user by ID
-router.delete('/:id', authMiddleware, (req, res) => {
-  res.send(`Delete user with ID ${req.params.id}`);
-});
+router.delete('/:id', authMiddleware, deleteUser);
 
 export default router;

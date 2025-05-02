@@ -5,7 +5,7 @@ const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'You could be logged in T' });
+    return res.status(401).json({ message: 'You could be logged in ' });
   }
 
   const token = authHeader.split(' ')[1];

@@ -1,7 +1,7 @@
+
 import express from 'express';
-import authMiddleware from '../middleware/authMiddleware.js';
 import {
-  getAllLogs,
+  getLogs,
   getLogById,
   createLog,
   updateLog,
@@ -11,18 +11,18 @@ import {
 const router = express.Router();
 
 // GET /api/logs
-router.get('/', authMiddleware, getAllLogs);
+router.get('/', getLogs);
 
 // GET /api/logs/:id
-router.get('/:id', authMiddleware, getLogById);
+router.get('/:id', getLogById);
 
 // POST /api/logs
-router.post('/', authMiddleware, createLog);
+router.post('/', createLog);
 
 // PUT /api/logs/:id
-router.put('/:id', authMiddleware, updateLog);
+router.put('/:id', updateLog);
 
 // DELETE /api/logs/:id
-router.delete('/:id', authMiddleware, deleteLog);
+router.delete('/:id', deleteLog);
 
 export default router;

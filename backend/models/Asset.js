@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const assetSchema = new mongoose.Schema({
   assetTag: { type: String, required: true, unique: true }, // e.g., INV-1001
@@ -13,4 +13,6 @@ const assetSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Asset', assetSchema);
+const Asset = mongoose.model('Asset', assetSchema);
+
+export default Asset;

@@ -1,25 +1,21 @@
 import express from 'express';
+import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset } from '../controllers/assetController.js';
+
 const router = express.Router();
 
-// Sample asset routes
-router.get('/', (req, res) => {
-  res.send('Get all assets');
-});
+// GET all assets
+router.get('/', getAssets); // Use controller function
 
-router.get('/:id', (req, res) => {
-  res.send(`Get asset with ID: ${req.params.id}`);
-});
+// GET single asset by ID
+router.get('/:id', getAssetById); // Use controller function
 
-router.post('/', (req, res) => {
-  res.send('Create a new asset');
-});
+// POST create new asset
+router.post('/', createAsset); // Use controller function
 
-router.put('/:id', (req, res) => {
-  res.send(`Update asset with ID: ${req.params.id}`);
-});
+// PUT update asset by ID
+router.put('/:id', updateAsset); // Use controller function
 
-router.delete('/:id', (req, res) => {
-  res.send(`Delete asset with ID: ${req.params.id}`);
-});
+// DELETE asset by ID
+router.delete('/:id', deleteAsset); // Use controller function
 
 export default router;

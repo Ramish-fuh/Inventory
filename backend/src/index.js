@@ -1,9 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import assetRoutes from './routes/assetRoutes.js';
+import logRoutes from './routes/logRoutes.js';
 import authMiddleware from './middleware/authMiddleware.js';
 // import bcrypt from 'bcryptjs';
 // import User from '../models/User.js';
@@ -48,6 +50,10 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 
 app.use(authMiddleware); // all routes after this require login
+
+app.use('/api/users', userRoutes);
+app.use('/api/assets', assetRoutes); 
+app.use('/api/logs', logRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
