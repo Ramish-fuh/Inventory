@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Grid, Button } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Button, Grid } from '@mui/material';
+import { Link, useNavigate } from 'react-router-dom';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -10,6 +10,7 @@ import EditAssetForm from './EditAssetForm';
 import styles from './Dashboard.module.css';
 
 function AdminDashboard() {
+  const navigate = useNavigate();
   const [assets, setAssets] = useState([]);
   const [displayedAssets, setDisplayedAssets] = useState([]);
   const [error, setError] = useState(null);
@@ -35,10 +36,16 @@ function AdminDashboard() {
       })
       .catch(err => {
         console.error('Error fetching assets:', err);
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          navigate('/login');
+          return;
+        }
         setError('Failed to load assets. Please try again later.');
         setLoading(false);
       });
-  }, []);
+  }, [navigate]);
 
   // Handle search and sort whenever the criteria change
   useEffect(() => {
@@ -48,27 +55,37 @@ function AdminDashboard() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(asset => 
-        asset.name.toLowerCase().includes(query) ||
-        asset.category.toLowerCase().includes(query) ||
-        (asset.assignedTo && asset.assignedTo.toLowerCase().includes(query)) ||
-        (asset.location && asset.location.toLowerCase().includes(query))
+        asset.name?.toLowerCase().includes(query) ||
+        asset.category?.toLowerCase().includes(query) ||
+        asset.assignedTo?.toLowerCase().includes(query) ||
+        asset.location?.toLowerCase().includes(query)
       );
     }
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue = a[sortBy] || '';
-      let bValue = b[sortBy] || '';
+      let aValue = a[sortBy];
+      let bValue = b[sortBy];
       
-      // Handle case-insensitive string comparison
-      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) return sortOrder === 'asc' ? -1 : 1;
+      if (bValue === null || bValue === undefined) return sortOrder === 'asc' ? 1 : -1;
       
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
+      // Convert to strings for string comparison
+      if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
       }
+      
+      // Handle numeric values
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      // String comparison
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
     });
 
     setDisplayedAssets(filtered);
@@ -82,10 +99,15 @@ function AdminDashboard() {
       if (statusFilter) params.append('status', statusFilter);
       if (assignedToFilter) params.append('assignedTo', assignedToFilter);
 
-      const response = await axios.get(`/api/assets?${params.toString()}`);
+      const response = await apiClient.get(`/api/assets?${params.toString()}`);
       setAssets(response.data);
     } catch (error) {
       console.error('Error fetching assets:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+      }
     }
   };
 
@@ -96,22 +118,32 @@ function AdminDashboard() {
   const handleDelete = async (assetId) => {
     if (window.confirm('Are you sure you want to delete this asset?')) {
       try {
-        await axios.delete(`/api/assets/${assetId}`);
+        await apiClient.delete(`/api/assets/${assetId}`);
         fetchAssets();
       } catch (error) {
         console.error('Error deleting asset:', error);
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          navigate('/login');
+        }
       }
     }
   };
 
   const generateQR = async (assetId) => {
     try {
-      const response = await axios.get(`/api/qr/${assetId}`);
+      const response = await apiClient.get(`/api/qr/${assetId}`);
       // Open QR code in new window
       const qrWindow = window.open('', '_blank');
       qrWindow.document.write(`<img src="${response.data.qrCode}" alt="QR Code" />`);
     } catch (error) {
       console.error('Error generating QR code:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+      }
     }
   };
 
@@ -157,7 +189,7 @@ function AdminDashboard() {
         <section className={styles.assetsSection}>
           <div className={styles.controls}>
             <Grid container spacing={3} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={3}>
+              <Grid size={{ xs:12,  lg:3}}>
                 <TextField
                   fullWidth
                   label="Search assets"
@@ -166,7 +198,7 @@ function AdminDashboard() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid size={{ xs:12, lg:3 }}>
                 <FormControl fullWidth>
                   <InputLabel>Category</InputLabel>
                   <Select
@@ -181,11 +213,10 @@ function AdminDashboard() {
                     <MenuItem value="Mobile">Mobile</MenuItem>
                     <MenuItem value="Software">Software</MenuItem>
                     <MenuItem value="Other">Other</MenuItem>
-                   
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid size={{xs:12, lg:3}}>
                 <FormControl fullWidth>
                   <InputLabel>Status</InputLabel>
                   <Select
@@ -201,7 +232,7 @@ function AdminDashboard() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid size={{xs:12, lg:3}}>
                 <TextField
                   fullWidth
                   label="Assigned To"
@@ -214,9 +245,9 @@ function AdminDashboard() {
             </Grid>
           </div>
 
-          <div className={styles.assetsGrid}>
+          <Grid container spacing={3}>
             {displayedAssets.map(asset => (
-              <Grid item xs={12} sm={6} md={4} key={asset._id}>
+              <Grid size={{xs:12, lg:6, xl:4}} key={asset._id}>
                 <Card 
                   className={styles.assetCard}
                   style={{ margin: 0, padding: 0 }}
@@ -267,7 +298,7 @@ function AdminDashboard() {
                 </Card>
               </Grid>
             ))}
-          </div>
+          </Grid>
         </section>
       </main>
 

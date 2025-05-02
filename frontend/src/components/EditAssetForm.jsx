@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../index';
 import styles from './EditAssetForm.module.css';
 
 const EditAssetForm = ({ asset, onClose, onUpdate }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -40,6 +42,12 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
       setUserSuggestions(response.data);
     } catch (err) {
       console.error('Error searching users:', err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+        return;
+      }
     } finally {
       setIsSearching(false);
     }
@@ -72,6 +80,12 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
       onUpdate(response.data);
       onClose();
     } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+        return;
+      }
       setError(err.response?.data?.message || 'Error updating asset');
     }
   };

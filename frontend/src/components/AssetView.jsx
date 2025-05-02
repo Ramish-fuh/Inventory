@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../index';
 import styles from './Dashboard.module.css';
 import EditAssetForm from './EditAssetForm';
 
 function AssetView() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [asset, setAsset] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,14 +21,28 @@ function AssetView() {
       })
       .catch(err => {
         console.error('Error fetching asset:', err);
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          navigate('/login');
+          return;
+        }
         setError('Failed to load asset details.');
         setLoading(false);
       });
-  }, [id]);
+  }, [id, navigate]);
 
-  const handleUpdate = (updatedAsset) => {
-    setAsset(updatedAsset);
-    setIsEditing(false);
+  const handleUpdate = async (updatedAsset) => {
+    try {
+      setAsset(updatedAsset);
+      setIsEditing(false);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+      }
+    }
   };
 
   const renderEditButton = () => {

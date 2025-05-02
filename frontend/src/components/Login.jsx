@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import styles from './Login.module.css';
 
 // Replace `jwtDecode` with a custom function to decode JWT tokens
@@ -25,10 +25,20 @@ function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === 'true') {
+      setMessage('Your session has expired. Please log in again.');
+    }
+  }, [location]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     try {
       const response = await axios.post('http://localhost:5001/api/auth/login', {
         username,
@@ -56,6 +66,7 @@ function Login() {
         
         <form onSubmit={handleLogin} className={styles.form}>
           {error && <div className={styles.error}>{error}</div>}
+          {message && <div className={`${styles.message} ${styles.info}`}>{message}</div>}
           
           <div className={styles.inputGroup}>
             <input

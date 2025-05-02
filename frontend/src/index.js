@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5001', // Replace with your backend server URL
+  baseURL: 'http://localhost:5001',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,7 +10,7 @@ const apiClient = axios.create({
 // Add a request interceptor to include the token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Retrieve token from localStorage
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,11 +23,18 @@ apiClient.interceptors.request.use(
 
 // Add a response interceptor to handle 401 errors
 apiClient.interceptors.response.use(
-  (response) => response, // Pass through successful responses
+  (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Redirect to login page on 401 Unauthorized
-      window.location.href = '/login';
+    if (error.response?.status === 401) {
+      // Clear auth data
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      
+      // Only redirect if we're not already on the login page
+      const currentPath = window.location.pathname;
+      if (!['/login', '/recover-password', '/reset-password'].some(path => currentPath.startsWith(path))) {
+        window.location.href = '/login?expired=true';
+      }
     }
     return Promise.reject(error);
   }

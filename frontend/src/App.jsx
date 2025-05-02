@@ -6,7 +6,6 @@ import AssetView from './components/AssetView';
 import Login from './components/Login';
 import { jwtDecode } from 'jwt-decode';
 import PrivateRoute from './components/PrivateRoute';
-import LogoutButton from './components/LogoutButton';
 import RecoverPassword from './components/RecoverPassword';
 import ResetPassword from './components/ResetPassword';
 import Navigation from './components/Navigation';
@@ -28,7 +27,6 @@ function App() {
         backgroundColor: 'var(--apple-light-gray)'
       }}>
         <Navigation />
-        {localStorage.getItem('token') && <LogoutButton />} {/* Show LogoutButton only if logged in */}
         <Routes>
           {/* Login Route */}
           <Route path="/login" element={<Login />} />

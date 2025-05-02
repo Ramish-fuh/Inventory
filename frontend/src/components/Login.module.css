@@ -103,3 +103,20 @@
   background: rgba(52, 199, 89, 0.1);
   color: var(--apple-success);
 }
+
+.info {
+  background: rgba(0, 102, 204, 0.1);
+  color: var(--apple-blue);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

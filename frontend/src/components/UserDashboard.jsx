@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../index';
 import styles from './Dashboard.module.css';
 
 function UserDashboard() {
+  const navigate = useNavigate();
   const [assets, setAssets] = useState([]);
   const [displayedAssets, setDisplayedAssets] = useState([]);
   const [error, setError] = useState(null);
@@ -26,10 +27,16 @@ function UserDashboard() {
       })
       .catch(err => {
         console.error('Error fetching assets:', err);
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          navigate('/login');
+          return;
+        }
         setError('Failed to load assets. Please try again later.');
         setLoading(false);
       });
-  }, []);
+  }, [navigate]);
 
   // Handle search and sort whenever the criteria change
   useEffect(() => {
