@@ -11,7 +11,14 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
     status: '',
     assignedTo: '',
     location: '',
-    notes: ''
+    notes: '',
+    serialNumber: '',
+    purchaseDate: '',
+    warrantyExpiry: '',
+    licenseExpiry: '',
+    nextMaintenance: '',
+    maintenanceInterval: '',
+    lastMaintenance: ''
   });
   const [error, setError] = useState('');
   const [userSuggestions, setUserSuggestions] = useState([]);
@@ -25,7 +32,14 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
         status: asset.status || '',
         assignedTo: asset.assignedTo || '',
         location: asset.location || '',
-        notes: asset.notes || ''
+        notes: asset.notes || '',
+        serialNumber: asset.serialNumber || '',
+        purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().split('T')[0] : '',
+        warrantyExpiry: asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toISOString().split('T')[0] : '',
+        licenseExpiry: asset.licenseExpiry ? new Date(asset.licenseExpiry).toISOString().split('T')[0] : '',
+        nextMaintenance: asset.nextMaintenance ? new Date(asset.nextMaintenance).toISOString().split('T')[0] : '',
+        maintenanceInterval: asset.maintenanceInterval || '',
+        lastMaintenance: asset.lastMaintenance ? new Date(asset.lastMaintenance).toISOString().split('T')[0] : ''
       });
     }
   }, [asset]);
@@ -142,6 +156,84 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
             <option value="Under Maintenance">Under Maintenance</option>
             <option value="Retired">Retired</option>
           </select>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="purchaseDate">Purchase Date</label>
+          <input
+            type="date"
+            id="purchaseDate"
+            name="purchaseDate"
+            value={formData.purchaseDate}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="warrantyExpiry">Warranty Expiry</label>
+          <input
+            type="date"
+            id="warrantyExpiry"
+            name="warrantyExpiry"
+            value={formData.warrantyExpiry}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="licenseExpiry">License Expiry</label>
+          <input
+            type="date"
+            id="licenseExpiry"
+            name="licenseExpiry"
+            value={formData.licenseExpiry}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="lastMaintenance">Last Maintenance Date</label>
+          <input
+            type="date"
+            id="lastMaintenance"
+            name="lastMaintenance"
+            value={formData.lastMaintenance}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="nextMaintenance">Next Maintenance Due</label>
+          <input
+            type="date"
+            id="nextMaintenance"
+            name="nextMaintenance"
+            value={formData.nextMaintenance}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="maintenanceInterval">Maintenance Interval (days)</label>
+          <input
+            type="number"
+            id="maintenanceInterval"
+            name="maintenanceInterval"
+            value={formData.maintenanceInterval}
+            onChange={handleChange}
+            min="0"
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="serialNumber">Serial Number</label>
+          <input
+            type="text"
+            id="serialNumber"
+            name="serialNumber"
+            value={formData.serialNumber}
+            onChange={handleChange}
+          />
         </div>
 
         <div className={styles.formGroup}>

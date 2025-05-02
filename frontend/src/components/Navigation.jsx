@@ -5,6 +5,7 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import styles from './Navigation.module.css';
 import { jwtDecode } from 'jwt-decode';
 import LogoutButton from './LogoutButton';
+import NotificationBell from './NotificationBell';
 
 function Navigation() {
   const location = useLocation();
@@ -48,6 +49,7 @@ function Navigation() {
         )}
       </div>
       <div className={styles.rightControls}>
+        {userRole === 'Admin' && <NotificationBell />}
         <Link to="/scan" className={styles.scanButton}>
           <Button
             variant="contained"

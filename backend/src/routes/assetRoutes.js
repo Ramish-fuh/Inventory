@@ -1,21 +1,33 @@
 import express from 'express';
-import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset } from '../controllers/assetController.js';
+import { 
+  getAssets, 
+  getAssetById, 
+  createAsset, 
+  updateAsset, 
+  deleteAsset,
+  exportToPDF,
+  exportToExcel 
+} from '../controllers/assetController.js';
 
 const router = express.Router();
 
 // GET all assets
-router.get('/', getAssets); // Use controller function
+router.get('/', getAssets);
+
+// Export routes
+router.get('/export/pdf', exportToPDF);
+router.get('/export/excel', exportToExcel);
 
 // GET single asset by ID
-router.get('/:id', getAssetById); // Use controller function
+router.get('/:id', getAssetById);
 
 // POST create new asset
-router.post('/', createAsset); // Use controller function
+router.post('/', createAsset);
 
 // PUT update asset by ID
-router.put('/:id', updateAsset); // Use controller function
+router.put('/:id', updateAsset);
 
 // DELETE asset by ID
-router.delete('/:id', deleteAsset); // Use controller function
+router.delete('/:id', deleteAsset);
 
 export default router;

@@ -10,6 +10,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import qrRoutes from './routes/qrRoutes.js';
 import authMiddleware from './middleware/authMiddleware.js';
 import logger from './utils/logger.js';
+import { startNotificationScheduler } from './services/notificationScheduler.js';
 
 dotenv.config();
 connectDB();
@@ -33,6 +34,9 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/qr', qrRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+// Start the notification scheduler
+startNotificationScheduler();
 
 // Error handling middleware
 app.use((err, req, res, next) => {

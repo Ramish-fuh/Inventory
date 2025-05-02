@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import axios from 'axios';
 import apiClient from '../index';
 import EditAssetForm from './EditAssetForm';
@@ -220,6 +221,29 @@ function AdminDashboard() {
     generateQR(asset._id);
   };
 
+  const handleExport = async (format) => {
+    try {
+      const response = await apiClient.get(`/api/assets/export/${format}`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], {
+        type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `asset-inventory.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error(`Error exporting to ${format}:`, error);
+    }
+  };
+
   if (loading) {
     return <div className={styles.loading}>Loading...</div>;
   }
@@ -234,6 +258,23 @@ function AdminDashboard() {
         <div className={styles.headerContent}>
           <h1>Admin Dashboard</h1>
           <p className={styles.subtitle}>Manage your inventory assets</p>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+            <Button
+              variant="contained"
+              startIcon={<FileDownloadIcon />}
+              onClick={() => handleExport('pdf')}
+              style={{ marginRight: '8px' }}
+            >
+              Export PDF
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<FileDownloadIcon />}
+              onClick={() => handleExport('excel')}
+            >
+              Export Excel
+            </Button>
+          </div>
         </div>
       </header>
 

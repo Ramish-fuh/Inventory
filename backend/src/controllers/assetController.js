@@ -4,6 +4,7 @@ import Asset from '../models/Asset.js';
 import User from '../models/User.js';
 import logger from '../utils/logger.js';
 import { generateQRCodeBuffer } from '../utils/genQr.js';
+import { generatePDFReport, generateExcelReport } from '../utils/reportGenerator.js';
 
 // Get all assets with filtering and search
 export const getAssets = async (req, res) => {
@@ -166,5 +167,39 @@ export const deleteAsset = async (req, res) => {
     res.json({ message: 'Asset removed' });
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Export assets to PDF
+// @route   GET /api/assets/export/pdf
+// @access  Private
+export const exportToPDF = async (req, res) => {
+  try {
+    const assets = await Asset.find({});
+    const buffer = await generatePDFReport(assets);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=asset-inventory.pdf');
+    res.send(buffer);
+  } catch (error) {
+    logger.error('Error generating PDF:', error);
+    res.status(500).json({ message: 'Error generating PDF report' });
+  }
+};
+
+// @desc    Export assets to Excel
+// @route   GET /api/assets/export/excel
+// @access  Private
+export const exportToExcel = async (req, res) => {
+  try {
+    const assets = await Asset.find({});
+    const buffer = await generateExcelReport(assets);
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=asset-inventory.xlsx');
+    res.send(buffer);
+  } catch (error) {
+    logger.error('Error generating Excel:', error);
+    res.status(500).json({ message: 'Error generating Excel report' });
   }
 };

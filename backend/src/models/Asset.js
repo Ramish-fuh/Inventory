@@ -6,10 +6,15 @@ const assetSchema = new mongoose.Schema({
   category: { type: String, enum: ['Laptop', 'Desktop', 'Server', 'Mobile', 'Software', 'Other'], required: true },
   purchaseDate: { type: Date },
   warrantyExpiry: { type: Date },
+  licenseExpiry: { type: Date },
+  nextMaintenance: { type: Date },
+  maintenanceInterval: { type: Number }, // in days
   status: { type: String, enum: ['Available', 'In Use', 'Under Maintenance', 'Retired'], default: 'Available' },
   assignedTo: { type: String, default: null }, // Employee/User ID or name
   location: { type: String }, // Office or department
   notes: { type: String },
+  lastMaintenance: { type: Date },
+  serialNumber: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 
