@@ -1,101 +1,120 @@
 # IT Asset Management System
 
-This project is the final capstone for the MSIT 5910 course at the University of the People. It focuses on designing and implementing an efficient IT Asset Management System (ITAMS) tailored for small businesses. The goal is to improve asset tracking, maintenance, and compliance using a lightweight, scalable, and user-friendly application.
+A comprehensive solution for managing organizational assets with features for tracking, maintenance scheduling, and automated notifications.
 
----
+## Features
 
-## 🧠 Project Overview
-
-**Title:** Designing an Efficient IT Asset Management System for Small Businesses  
-**Author:** Ramish Shu  
-**Course:** MSIT 5910 – Capstone  
-**Instructor:** Dr. Aminu Dau  
-
-The system will help small businesses manage hardware and software assets with key features like QR/barcode scanning, lifecycle tracking, alerts, and reporting. The backend is built with Node.js and Express, with optional frontend integration using React.
-
----
-
-## 🎯 Goals
-
-- Replace outdated manual tracking methods (e.g., spreadsheets)
-- Enhance security, compliance (GDPR, HIPAA), and inventory control
-- Enable affordable and scalable asset management for small businesses
-- Deliver a clear implementation, testing, and deployment process
-
----
-
-## 🔧 Features
-
-- Asset registry and real-time dashboard
-- QR/Barcode scanning
-- Lifecycle management (procurement to disposal)
+- Asset lifecycle management
+- QR code generation and scanning
 - Role-based access control
-- Alerts and notifications for maintenance/license renewal
-- Downloadable reports for audits and forecasting
-- Deployment-ready for cloud or local environments
+- Maintenance scheduling
+- License and warranty tracking
+- Real-time notifications
+- Activity logging
+- PDF/Excel report generation
 
----
+## Quick Start
 
-## 🛠 Tech Stack
+### Using Docker (Recommended)
 
-| Component       | Technology             |
-|----------------|------------------------|
-| Backend         | Node.js, Express       |
-| Frontend (opt.) | React                  |
-| Database        | PostgreSQL / MongoDB   |
-| Hosting         | Docker, Heroku, AWS    |
-| Reporting       | ExcelJS, PDFKit        |
-| Testing         | Jest, Postman          |
+1. Clone the repository
+2. Create a `.env` file in the backend directory:
+```env
+JWT_SECRET=yourSuperSecretKeyHere
+EMAIL_USER=your-email@example.com
+EMAIL_PASS=your-email-password
+MONGO_URI=mongodb://admin:adminpassword@mongodb:27017/asset-manager?authSource=admin
+```
 
----
+3. Start the application:
+```bash
+docker-compose up --build
+```
 
-## 🚀 Getting Started
+4. Access the application:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:5001
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/yourusername/itams-capstone.git
-   cd itams-capstone
-   ```
+### Manual Setup
 
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+#### Backend Setup
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
 
-3. **Set Environment Variables**
-   Create a `.env` file and add your DB credentials and secret keys.
+2. Install dependencies:
+```bash
+npm install
+```
 
-4. **Run the Server**
-   ```bash
-   npm run dev
-   ```
+3. Create and configure `.env` file
 
-5. **Access Frontend**
-   If frontend is used:
-   ```bash
-   cd frontend
-   npm install
-   npm start
-   ```
+4. Start the server:
+```bash
+npm start
+```
 
----
+#### Frontend Setup
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
 
-## 📦 Project Workflow
+2. Install dependencies:
+```bash
+npm install
+```
 
-1. Project Initialization and Setup
-2. Database Design and Modeling
-3. Backend Development (REST API)
-4. Frontend Integration (optional)
-5. QR/Barcode Handling
-6. Reporting and Alerts
-7. Deployment (Docker/Heroku)
-8. Documentation and Final Submission
+3. Start the development server:
+```bash
+npm run dev
+```
 
----
+## Documentation
 
-## 📄 License
+Detailed documentation can be found in the `/docs` directory:
 
-This project is licensed under the MIT License. See `LICENSE` file for details.
+- [Main Documentation](docs/README.md)
+- [Technical Architecture](docs/technical-architecture.md)
+- [Project Structure](docs/structure.md)
 
----
+## Development
+
+### Prerequisites
+- Node.js 18+
+- MongoDB
+- Docker and Docker Compose (for containerized deployment)
+
+### Development Environment
+The project includes:
+- Hot reloading for both frontend and backend
+- ESLint configuration
+- Prettier formatting
+- Development debugging configuration
+
+### Testing
+Run frontend tests:
+```bash
+cd frontend
+npm test
+```
+
+Run backend tests:
+```bash
+cd backend
+npm test
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
