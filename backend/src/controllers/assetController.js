@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Log from '../../models/Log.js';
+import Asset from '../../models/Asset.js';
 
 // @desc    Get all assets
 // @route   GET /api/assets
@@ -9,6 +10,7 @@ export const getAssets = async (req, res) => {
     const assets = await Asset.find();
     res.json(assets);
   } catch (error) {
+    console.error('🔥 Error fetching assets:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
@@ -36,7 +38,7 @@ export const createAsset = async (req, res) => {
 
     // Log the asset creation action
     await Log.create({
-      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Create Asset',
       target: savedAsset._id,
       details: `Asset ${savedAsset.name} created.`
@@ -58,7 +60,7 @@ export const updateAsset = async (req, res) => {
 
     // Log the asset update action
     await Log.create({
-      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Update Asset',
       target: updatedAsset._id,
       details: `Asset ${updatedAsset.name} updated.`
@@ -80,7 +82,7 @@ export const deleteAsset = async (req, res) => {
 
     // Log the asset deletion action
     await Log.create({
-      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Delete Asset',
       target: deletedAsset._id,
       details: `Asset ${deletedAsset.name} deleted.`

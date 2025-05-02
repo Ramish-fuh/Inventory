@@ -8,7 +8,7 @@ export const createUser = async (req, res) => {
 
     // Log the user creation action
     await Log.create({
-      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Create User',
       target: user._id,
       details: `User ${user.username} created.`
@@ -56,7 +56,7 @@ export const updateUser = async (req, res) => {
 
     // Log the user update action
     await Log.create({
-      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Update User',
       target: user._id,
       details: `User ${user.username} updated.`
@@ -78,7 +78,7 @@ export const deleteUser = async (req, res) => {
 
     // Log the user deletion action
     await Log.create({
-      user: req.user._id, // Assuming `req.user` contains the logged-in user
+      user: req.user.id, // Assuming `req.user` contains the logged-in user
       action: 'Delete User',
       target: user._id,
       details: `User ${user.username} deleted.`

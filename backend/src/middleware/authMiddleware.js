@@ -1,4 +1,3 @@
-// backend/src/middleware/authMiddleware.js
 import jwt from 'jsonwebtoken';
 
 const authMiddleware = (req, res, next) => {
@@ -10,8 +9,16 @@ const authMiddleware = (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
   try {
+    // Decode the JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // You can attach decoded info to the request object
+
+    // Log the decoded information for debugging purposes
+    console.log('Decoded JWT:', decoded); // Ensure this contains the user data (e.g., user._id)
+
+    // Attach the decoded user information to the req.user object
+    req.user = decoded;
+
+    // Proceed to the next middleware or route handler
     next();
   } catch (err) {
     console.error('JWT verification failed:', err.message);
