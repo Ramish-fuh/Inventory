@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import styles from './Login.module.css';
 
 // Replace `jwtDecode` with a custom function to decode JWT tokens
 function decodeJWT(token) {
@@ -23,8 +24,11 @@ function decodeJWT(token) {
 function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
     try {
       const response = await axios.post('http://localhost:5001/api/auth/login', {
         username,
@@ -32,46 +36,56 @@ function Login() {
       });
 
       const token = response.data.token;
-      // Save the token in localStorage
       localStorage.setItem('token', token);
-
-      // Decode the token to get the user's role
-      const decoded = token ? decodeJWT(token) : null; // Use the custom function
+      
+      const decoded = token ? decodeJWT(token) : null;
       const userRole = decoded.role;
-
-      // Store the user's role in localStorage
       localStorage.setItem('userRole', userRole);
 
-      // Redirect user based on role
-      if (userRole === 'Admin') {
-        window.location.href = '/admin-dashboard';
-      } else {
-        window.location.href = '/user-dashboard';
-      }
+      window.location.href = userRole === 'Admin' ? '/admin-dashboard' : '/user-dashboard';
     } catch (error) {
-      console.error('Login failed:', error);
+      setError('Invalid credentials. Please try again.');
     }
   };
 
   return (
-    <div>
-      <h2>Login</h2>
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button onClick={handleLogin}>Login</button>
-      <Link to="/recover-password" style={{ display: 'block', marginTop: '10px' }}>
-        Forgot Password?
-      </Link>
+    <div className={styles.loginContainer}>
+      <div className={styles.loginCard}>
+        <h1>Welcome Back</h1>
+        <p className={styles.subtitle}>Sign in to manage your inventory</p>
+        
+        <form onSubmit={handleLogin} className={styles.form}>
+          {error && <div className={styles.error}>{error}</div>}
+          
+          <div className={styles.inputGroup}>
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className={styles.inputGroup}>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <button type="submit" className={styles.loginButton}>
+            Sign In
+          </button>
+
+          <Link to="/recover-password" className={styles.forgotPassword}>
+            Forgot Password?
+          </Link>
+        </form>
+      </div>
     </div>
   );
 }

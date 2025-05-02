@@ -14,7 +14,32 @@ const LogoutButton = () => {
   };
 
   return (
-    <button onClick={handleLogout} style={{ position: 'absolute', top: 10, right: 10 }}>
+    <button 
+      onClick={handleLogout} 
+      style={{ 
+        position: 'fixed',
+        top: '8px', 
+        right: '24px',
+        zIndex: 1000,
+        backgroundColor: 'transparent',
+        color: 'var(--apple-blue)',
+        padding: '8px 16px',
+        border: '1px solid var(--apple-blue)',
+        borderRadius: '6px',
+        fontSize: '0.9rem',
+        fontWeight: '500',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease'
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.backgroundColor = 'var(--apple-blue)';
+        e.currentTarget.style.color = 'white';
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+        e.currentTarget.style.color = 'var(--apple-blue)';
+      }}
+    >
       Logout
     </button>
   );

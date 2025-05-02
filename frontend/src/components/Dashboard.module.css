@@ -1,0 +1,239 @@
+.dashboardContainer {
+  min-height: 100vh;
+  background: var(--apple-white);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.header {
+  background: var(--apple-white);
+  padding: 48px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: center;
+  width: 100%;
+}
+
+.headerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.headerContent h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--apple-black);
+}
+
+.subtitle {
+  color: var(--apple-gray);
+  font-size: 1.1rem;
+  margin-top: 8px;
+}
+
+.mainContent {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.statCard {
+  background: var(--apple-white);
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.statCard h3 {
+  color: var(--apple-gray);
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+  margin-bottom: 12px;
+}
+
+.statNumber {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--apple-black);
+  margin: 0;
+}
+
+.assetsSection {
+  margin-top: 48px;
+}
+
+.assetsSection h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--apple-black);
+  text-align: center;
+}
+
+.assetsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.assetCard {
+  background: var(--apple-white);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.assetCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.assetName {
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  color: var(--apple-black) !important;
+  margin-bottom: 8px !important;
+}
+
+.assetDescription {
+  color: var(--apple-gray) !important;
+  margin-bottom: 16px !important;
+}
+
+.viewDetailsLink {
+  color: var(--apple-blue) !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+}
+
+.viewDetailsLink:hover {
+  text-decoration: underline !important;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 1.1rem;
+  color: var(--apple-gray);
+}
+
+.error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: var(--apple-error);
+  text-align: center;
+  padding: 24px;
+}
+
+/* Asset Details Styles */
+.assetDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detailCard {
+  background: var(--apple-white);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.detailItem h3 {
+  color: var(--apple-gray);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.detailItem p {
+  color: var(--apple-black);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.status {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem !important;
+  font-weight: 500;
+}
+
+.available {
+  background: rgba(52, 199, 89, 0.1);
+  color: var(--apple-success) !important;
+}
+
+.inuse {
+  background: rgba(0, 102, 204, 0.1);
+  color: var(--apple-blue) !important;
+}
+
+.undermaintenance {
+  background: rgba(255, 149, 0, 0.1);
+  color: #ff9500 !important;
+}
+
+.retired {
+  background: rgba(134, 134, 139, 0.1);
+  color: var(--apple-gray) !important;
+}
+
+.notes {
+  margin-top: 24px;
+}
+
+.notes p {
+  color: var(--apple-black);
+  line-height: 1.6;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .headerContent h1 {
+    font-size: 2rem;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .assetsGrid {
+    grid-template-columns: 1fr;
+  }
+}
