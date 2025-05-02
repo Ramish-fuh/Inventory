@@ -10,6 +10,8 @@ import LogoutButton from './components/LogoutButton';
 import RecoverPassword from './components/RecoverPassword';
 import ResetPassword from './components/ResetPassword';
 import Navigation from './components/Navigation';
+import UserManagement from './components/UserManagement';
+import QRScanner from './components/QRScanner';
 
 function App() {
   const token = localStorage.getItem('token');
@@ -35,10 +37,19 @@ function App() {
           <Route path="/recover-password" element={<RecoverPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
+          {/* QR Scanner Route */}
+          <Route path="/scan" element={<PrivateRoute element={<QRScanner />} role={userRole} />} />
+
           {/* Protect admin-dashboard with PrivateRoute */}
           <Route
             path="/admin-dashboard"
             element={<PrivateRoute element={<AdminDashboard />} role="Admin" />}
+          />
+
+          {/* Protect user-management with PrivateRoute */}
+          <Route
+            path="/user-management"
+            element={<PrivateRoute element={<UserManagement />} role="Admin" />}
           />
 
           {/* Protect user-dashboard with PrivateRoute */}

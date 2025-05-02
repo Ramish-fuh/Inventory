@@ -1,9 +1,14 @@
 .navigation {
-  background: var(--apple-white);
+  background-color: var(--apple-dark-gray);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
+  justify-content: space-between;
 }
 
 .navContainer {
@@ -23,21 +28,22 @@
 }
 
 .navLink {
-  color: var(--apple-gray);
+  color: white;
   text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
   font-size: 0.9rem;
   font-weight: 500;
-  padding: 8px 0;
-  transition: all 0.2s ease;
   position: relative;
 }
 
 .navLink:hover {
-  color: var(--apple-black);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .active {
-  color: var(--apple-black);
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .active::after {
@@ -49,4 +55,21 @@
   height: 2px;
   background: var(--apple-blue);
   border-radius: 2px;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.rightControls {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 8px;
+}
+
+.scanButton {
+  text-decoration: none;
 }
