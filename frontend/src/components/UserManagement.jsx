@@ -29,7 +29,8 @@ function UserManagement() {
     username: '',
     fullName: '',
     email: '',
-    role: 'Viewer'
+    role: 'Viewer',
+    password: ''
   });
 
   useEffect(() => {
@@ -52,7 +53,8 @@ function UserManagement() {
         username: user.username,
         fullName: user.fullName,
         email: user.email,
-        role: user.role
+        role: user.role,
+        password: '' // Clear password field when editing
       });
     } else {
       setSelectedUser(null);
@@ -60,7 +62,8 @@ function UserManagement() {
         username: '',
         fullName: '',
         email: '',
-        role: 'Viewer'
+        role: 'Viewer',
+        password: ''
       });
     }
     setOpen(true);
@@ -81,10 +84,17 @@ function UserManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const dataToSend = { ...formData };
+      
+      // Only include password if it's provided or if creating new user
+      if (!dataToSend.password && selectedUser) {
+        delete dataToSend.password;
+      }
+
       if (selectedUser) {
-        await apiClient.put(`/api/users/${selectedUser._id}`, formData);
+        await apiClient.put(`/api/users/${selectedUser._id}`, dataToSend);
       } else {
-        await apiClient.post('/api/users', formData);
+        await apiClient.post('/api/users', dataToSend);
       }
       handleClose();
       fetchUsers();
@@ -209,6 +219,31 @@ function UserManagement() {
                   <MenuItem value="Viewer">Viewer</MenuItem>
                 </Select>
               </FormControl>
+              {/* Show password field only when creating new user */}
+              {!selectedUser && (
+                <TextField
+                  margin="dense"
+                  name="password"
+                  label="Password"
+                  type="password"
+                  fullWidth
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+              )}
+              {/* Optional password field for editing */}
+              {selectedUser && (
+                <TextField
+                  margin="dense"
+                  name="password"
+                  label="New Password (leave blank to keep current)"
+                  type="password"
+                  fullWidth
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              )}
             </DialogContent>
             <DialogActions>
               <Button onClick={handleClose}>Cancel</Button>

@@ -5,10 +5,17 @@ import User from '../models/User.js';
 import logger from '../utils/logger.js';
 import { generateQRCodeBuffer } from '../utils/genQr.js';
 import { generatePDFReport, generateExcelReport } from '../utils/reportGenerator.js';
+import SystemLog from '../models/SystemLog.js';
+import { createNotification } from '../helpers/notificationHelper.js';
 
 // Get all assets with filtering and search
 export const getAssets = async (req, res) => {
   try {
+    logger.info('Fetching all assets', { 
+      userId: req.user?._id,
+      query: req.query 
+    });
+
     const { search, category, status, assignedTo } = req.query;
     const query = {};
 
@@ -53,9 +60,27 @@ export const getAssets = async (req, res) => {
       .populate('assignedTo', 'username fullName email')
       .sort({ createdAt: -1 });
 
+    logger.info('Assets fetched successfully', {
+      count: assets.length,
+      userId: req.user?._id
+    });
+
     res.json(assets);
   } catch (error) {
-    logger.error('Error getting assets:', error);
+    logger.error('Error fetching assets', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?._id
+    });
+
+    await SystemLog.create({
+      level: 'error',
+      message: `Failed to fetch assets: ${error.message}`,
+      service: 'asset-service',
+      trace: error.stack,
+      user: req.user?._id
+    });
+
     res.status(500).json({ message: 'Error getting assets' });
   }
 };
@@ -65,6 +90,11 @@ export const getAssets = async (req, res) => {
 // @access  Public
 export const getAssetById = async (req, res) => {
   try {
+    logger.info('Fetching asset by ID', { 
+      assetId: req.params.id,
+      userId: req.user?._id 
+    });
+
     const { id } = req.params;
     
     // Validate if id is provided and is a valid ObjectId
@@ -94,9 +124,30 @@ export const getAssetById = async (req, res) => {
       });
     }
 
+    logger.info('Asset fetched successfully', {
+      assetId: asset._id,
+      assetName: asset.name,
+      userId: req.user?._id
+    });
+
     res.json(asset);
   } catch (error) {
-    logger.error('Error getting asset by ID:', error);
+    logger.error('Error fetching asset by ID', {
+      error: error.message,
+      stack: error.stack,
+      assetId: req.params.id,
+      userId: req.user?._id
+    });
+
+    await SystemLog.create({
+      level: 'error',
+      message: `Failed to fetch asset: ${error.message}`,
+      service: 'asset-service',
+      metadata: { assetId: req.params.id },
+      trace: error.stack,
+      user: req.user?._id
+    });
+
     res.status(500).json({ message: 'Server Error' });
   }
 };
@@ -106,21 +157,76 @@ export const getAssetById = async (req, res) => {
 // @access  Public
 export const createAsset = async (req, res) => {
   try {
-    const asset = new Asset(req.body);
-    const savedAsset = await asset.save();
-
-    // Log the asset creation action
-    await Log.create({
-      user: req.user.id, // Assuming `req.user` contains the logged-in user
-      action: 'Create Asset',
-      category: 'Asset Management',
-      target: savedAsset._id,
-      details: `Asset ${savedAsset.name} created.`
+    logger.info('Creating new asset', {
+      requesterId: req.user._id,
+      assetData: req.body
     });
 
-    res.status(201).json(savedAsset);
+    const asset = new Asset(req.body);
+    await asset.save();
+
+    // Create activity log
+    await Log.create({
+      user: req.user._id,
+      action: 'Create Asset',
+      category: 'Asset Management',
+      target: asset._id,
+      details: `Asset ${asset.name} (${asset.assetTag}) created`
+    });
+
+    // Log to system logs
+    await SystemLog.create({
+      level: 'info',
+      message: 'New asset created',
+      service: 'asset-service',
+      metadata: {
+        requesterId: req.user._id,
+        assetId: asset._id,
+        assetTag: asset.assetTag,
+        category: asset.category
+      },
+      user: req.user._id
+    });
+
+    // Notify admins about new asset
+    const admins = await User.find({ role: 'Admin' });
+    for (const admin of admins) {
+      await createNotification(
+        admin,
+        'asset',
+        `New asset ${asset.name} (${asset.assetTag}) has been created`,
+        { assetId: asset._id }
+      );
+    }
+
+    logger.info('Asset created successfully', {
+      requesterId: req.user._id,
+      assetId: asset._id,
+      assetTag: asset.assetTag
+    });
+
+    res.status(201).json(asset);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    logger.error('Error creating asset', {
+      error: error.message,
+      stack: error.stack,
+      requesterId: req.user._id,
+      assetData: req.body
+    });
+
+    await SystemLog.create({
+      level: 'error',
+      message: `Error creating asset: ${error.message}`,
+      service: 'asset-service',
+      metadata: {
+        requesterId: req.user._id,
+        attemptedAsset: req.body
+      },
+      trace: error.stack,
+      user: req.user._id
+    });
+
+    res.status(500).json({ message: 'Error creating asset' });
   }
 };
 
@@ -129,21 +235,110 @@ export const createAsset = async (req, res) => {
 // @access  Public
 export const updateAsset = async (req, res) => {
   try {
-    const updatedAsset = await Asset.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedAsset) return res.status(404).json({ message: 'Asset not found' });
-
-    // Log the asset update action
-    await Log.create({
-      user: req.user.id, // Assuming `req.user` contains the logged-in user
-      action: 'Update Asset',
-      category: 'Asset Management',
-      target: updatedAsset._id,
-      details: `Asset ${updatedAsset.name} updated.`
+    const { id } = req.params;
+    logger.info('Updating asset', {
+      requesterId: req.user._id,
+      assetId: id,
+      updateData: req.body
     });
 
-    res.json(updatedAsset);
+    const asset = await Asset.findById(id);
+    if (!asset) {
+      logger.warn('Update failed - asset not found', {
+        requesterId: req.user._id,
+        assetId: id
+      });
+
+      await SystemLog.create({
+        level: 'warn',
+        message: 'Attempt to update non-existent asset',
+        service: 'asset-service',
+        metadata: {
+          requesterId: req.user._id,
+          assetId: id
+        },
+        user: req.user._id
+      });
+
+      return res.status(404).json({ message: 'Asset not found' });
+    }
+
+    // Track changes for logging
+    const changes = [];
+    Object.keys(req.body).forEach(key => {
+      if (asset[key] !== req.body[key]) {
+        changes.push({
+          field: key,
+          oldValue: asset[key],
+          newValue: req.body[key]
+        });
+      }
+    });
+
+    // Update the asset
+    Object.assign(asset, req.body);
+    await asset.save();
+
+    // Create activity log with detailed changes
+    await Log.create({
+      user: req.user._id,
+      action: 'Update Asset',
+      category: 'Asset Management',
+      target: asset._id,
+      details: `Asset ${asset.name} (${asset.assetTag}) updated. Changes: ${JSON.stringify(changes)}`
+    });
+
+    await SystemLog.create({
+      level: 'info',
+      message: 'Asset updated',
+      service: 'asset-service',
+      metadata: {
+        requesterId: req.user._id,
+        assetId: id,
+        changes
+      },
+      user: req.user._id
+    });
+
+    // Notify relevant users about the update
+    if (asset.assignedTo) {
+      await createNotification(
+        asset.assignedTo,
+        'asset',
+        `Asset ${asset.name} assigned to you has been updated`,
+        { assetId: asset._id }
+      );
+    }
+
+    logger.info('Asset updated successfully', {
+      requesterId: req.user._id,
+      assetId: id,
+      changes
+    });
+
+    res.json(asset);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    logger.error('Error updating asset', {
+      error: error.message,
+      stack: error.stack,
+      requesterId: req.user._id,
+      assetId: req.params.id
+    });
+
+    await SystemLog.create({
+      level: 'error',
+      message: `Error updating asset: ${error.message}`,
+      service: 'asset-service',
+      metadata: {
+        requesterId: req.user._id,
+        assetId: req.params.id,
+        attemptedUpdate: req.body
+      },
+      trace: error.stack,
+      user: req.user._id
+    });
+
+    res.status(500).json({ message: 'Error updating asset' });
   }
 };
 
@@ -152,21 +347,96 @@ export const updateAsset = async (req, res) => {
 // @access  Public
 export const deleteAsset = async (req, res) => {
   try {
-    const deletedAsset = await Asset.findByIdAndDelete(req.params.id);
-    if (!deletedAsset) return res.status(404).json({ message: 'Asset not found' });
-
-    // Log the asset deletion action
-    await Log.create({
-      user: req.user.id, // Assuming `req.user` contains the logged-in user
-      action: 'Delete Asset',
-      category: 'Asset Management',
-      target: deletedAsset._id,
-      details: `Asset ${deletedAsset.name} deleted.`
+    const { id } = req.params;
+    logger.info('Deleting asset', {
+      requesterId: req.user._id,
+      assetId: id
     });
 
-    res.json({ message: 'Asset removed' });
+    const asset = await Asset.findById(id);
+    if (!asset) {
+      logger.warn('Deletion failed - asset not found', {
+        requesterId: req.user._id,
+        assetId: id
+      });
+
+      await SystemLog.create({
+        level: 'warn',
+        message: 'Attempt to delete non-existent asset',
+        service: 'asset-service',
+        metadata: {
+          requesterId: req.user._id,
+          assetId: id
+        },
+        user: req.user._id
+      });
+
+      return res.status(404).json({ message: 'Asset not found' });
+    }
+
+    await asset.deleteOne();
+
+    // Log the deletion
+    await Log.create({
+      user: req.user._id,
+      action: 'Delete Asset',
+      category: 'Asset Management',
+      target: id,
+      details: `Asset ${asset.name} (${asset.assetTag}) deleted`
+    });
+
+    await SystemLog.create({
+      level: 'info',
+      message: 'Asset deleted',
+      service: 'asset-service',
+      metadata: {
+        requesterId: req.user._id,
+        deletedAssetId: id,
+        assetTag: asset.assetTag,
+        assetName: asset.name
+      },
+      user: req.user._id
+    });
+
+    // Notify relevant users about the deletion
+    const admins = await User.find({ role: 'Admin' });
+    for (const admin of admins) {
+      await createNotification(
+        admin,
+        'asset',
+        `Asset ${asset.name} (${asset.assetTag}) has been deleted`,
+        { assetId: id }
+      );
+    }
+
+    logger.info('Asset deleted successfully', {
+      requesterId: req.user._id,
+      assetId: id,
+      assetTag: asset.assetTag
+    });
+
+    res.json({ message: 'Asset deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    logger.error('Error deleting asset', {
+      error: error.message,
+      stack: error.stack,
+      requesterId: req.user._id,
+      assetId: req.params.id
+    });
+
+    await SystemLog.create({
+      level: 'error',
+      message: `Error deleting asset: ${error.message}`,
+      service: 'asset-service',
+      metadata: {
+        requesterId: req.user._id,
+        assetId: req.params.id
+      },
+      trace: error.stack,
+      user: req.user._id
+    });
+
+    res.status(500).json({ message: 'Error deleting asset' });
   }
 };
 

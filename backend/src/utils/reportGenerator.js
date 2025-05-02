@@ -1,12 +1,18 @@
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import { Readable } from 'stream';
+import logger from './logger.js';
+import SystemLog from '../models/SystemLog.js';
 
 export const generatePDFReport = async (assets) => {
-  const doc = new PDFDocument();
-  const chunks = [];
+  try {
+    logger.info('Starting PDF report generation', {
+      assetCount: assets.length
+    });
 
-  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    const doc = new PDFDocument();
+    const chunks = [];
+
     doc.on('data', chunk => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
@@ -86,134 +92,228 @@ export const generatePDFReport = async (assets) => {
       doc.moveDown();
     });
 
-    doc.end();
-  });
+    return new Promise((resolve, reject) => {
+      doc.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const duration = Date.now() - startTime;
+
+        logger.info('PDF report generated successfully', {
+          size: buffer.length,
+          duration,
+          assetCount: assets.length
+        });
+
+        SystemLog.create({
+          level: 'info',
+          message: 'PDF report generated',
+          service: 'report-generator',
+          metadata: {
+            type: 'pdf',
+            size: buffer.length,
+            duration,
+            assetCount: assets.length
+          }
+        }).catch(err => logger.error('Error logging PDF generation', { error: err }));
+
+        resolve(buffer);
+      });
+
+      doc.end();
+    });
+  } catch (error) {
+    logger.error('Error generating PDF report', {
+      error: error.message,
+      stack: error.stack,
+      assetCount: assets.length
+    });
+
+    await SystemLog.create({
+      level: 'error',
+      message: 'Error generating PDF report',
+      service: 'report-generator',
+      metadata: {
+        type: 'pdf',
+        error: error.message,
+        assetCount: assets.length
+      },
+      trace: error.stack
+    });
+
+    throw error;
+  }
 };
 
 export const generateExcelReport = async (assets) => {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Asset Inventory');
+  try {
+    logger.info('Starting Excel report generation', {
+      assetCount: assets.length
+    });
 
-  // Add report generation info
-  worksheet.getCell('A1').value = 'Asset Inventory Report';
-  worksheet.getCell('A2').value = `Generated on: ${new Date().toLocaleString()}`;
-  worksheet.mergeCells('A1:H1');
-  worksheet.mergeCells('A2:H2');
-  
-  // Style the title and date
-  worksheet.getCell('A1').font = { bold: true, size: 14 };
-  worksheet.getCell('A1').alignment = { horizontal: 'center' };
-  worksheet.getCell('A2').alignment = { horizontal: 'right' };
-  
-  // Add empty row for spacing
-  worksheet.addRow([]);
+    const startTime = Date.now();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Asset Inventory');
 
-  // Add headers
-  const headerRow = worksheet.addRow([
-    'Name',
-    'Category',
-    'Status',
-    'Location',
-    'Assigned To',
-    'Serial Number',
-    'Purchase Date',
-    'Warranty Expiry',
-    'License Expiry',
-    'Next Maintenance'
-  ]);
+    // Add report generation info
+    worksheet.getCell('A1').value = 'Asset Inventory Report';
+    worksheet.getCell('A2').value = `Generated on: ${new Date().toLocaleString()}`;
+    worksheet.mergeCells('A1:H1');
+    worksheet.mergeCells('A2:H2');
+    
+    // Style the title and date
+    worksheet.getCell('A1').font = { bold: true, size: 14 };
+    worksheet.getCell('A1').alignment = { horizontal: 'center' };
+    worksheet.getCell('A2').alignment = { horizontal: 'right' };
+    
+    // Add empty row for spacing
+    worksheet.addRow([]);
 
-  // Style the header row
-  headerRow.font = { bold: true };
-  headerRow.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFE0E0E0' }
-  };
-
-  // Set column widths
-  worksheet.columns = [
-    { width: 30 }, // Name
-    { width: 15 }, // Category
-    { width: 15 }, // Status
-    { width: 20 }, // Location
-    { width: 20 }, // Assigned To
-    { width: 20 }, // Serial Number
-    { width: 15 }, // Purchase Date
-    { width: 15 }, // Warranty Expiry
-    { width: 15 }, // License Expiry
-    { width: 15 }  // Next Maintenance
-  ];
-
-  // Add data
-  assets.forEach(asset => {
-    const row = worksheet.addRow([
-      asset.name,
-      asset.category,
-      asset.status,
-      asset.location,
-      asset.assignedTo,
-      asset.serialNumber,
-      asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : '',
-      asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toLocaleDateString() : '',
-      asset.licenseExpiry ? new Date(asset.licenseExpiry).toLocaleDateString() : '',
-      asset.nextMaintenance ? new Date(asset.nextMaintenance).toLocaleDateString() : ''
+    // Add headers
+    const headerRow = worksheet.addRow([
+      'Name',
+      'Category',
+      'Status',
+      'Location',
+      'Assigned To',
+      'Serial Number',
+      'Purchase Date',
+      'Warranty Expiry',
+      'License Expiry',
+      'Next Maintenance'
     ]);
 
-    // Add conditional formatting for dates
-    const today = new Date();
-    const critical = new Date();
-    const warning = new Date();
-    const notice = new Date();
-    critical.setDate(today.getDate() + 7);  // Critical: 7 days
-    warning.setDate(today.getDate() + 15);  // Warning: 15 days
-    notice.setDate(today.getDate() + 30);   // Notice: 30 days
-
-    // Color code expiring dates
-    [7, 8, 9].forEach(colIndex => { // Warranty, License, and Maintenance columns
-      const dateValue = row.getCell(colIndex).value;
-      if (dateValue) {
-        const date = new Date(dateValue);
-        if (date <= critical) {
-          row.getCell(colIndex).fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFFF0000' } // Red for critical
-          };
-        } else if (date <= warning) {
-          row.getCell(colIndex).fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFFF9900' } // Orange for warning
-          };
-        } else if (date <= notice) {
-          row.getCell(colIndex).fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFFFFF00' } // Yellow for notice
-          };
-        }
-      }
-    });
-  });
-
-  // Add legend
-  worksheet.addRow([]);
-  worksheet.addRow(['Color Legend']);
-  const legendRows = [
-    ['Critical (≤ 7 days)', 'FFFF0000'],
-    ['Warning (≤ 15 days)', 'FFFF9900'],
-    ['Notice (≤ 30 days)', 'FFFFFF00']
-  ];
-
-  legendRows.forEach(([text, color]) => {
-    const row = worksheet.addRow([text]);
-    row.getCell(1).fill = {
+    // Style the header row
+    headerRow.font = { bold: true };
+    headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: color }
+      fgColor: { argb: 'FFE0E0E0' }
     };
-  });
 
-  // Generate buffer
-  return await workbook.xlsx.writeBuffer();
+    // Set column widths
+    worksheet.columns = [
+      { width: 30 }, // Name
+      { width: 15 }, // Category
+      { width: 15 }, // Status
+      { width: 20 }, // Location
+      { width: 20 }, // Assigned To
+      { width: 20 }, // Serial Number
+      { width: 15 }, // Purchase Date
+      { width: 15 }, // Warranty Expiry
+      { width: 15 }, // License Expiry
+      { width: 15 }  // Next Maintenance
+    ];
+
+    // Add data
+    assets.forEach(asset => {
+      const row = worksheet.addRow([
+        asset.name,
+        asset.category,
+        asset.status,
+        asset.location,
+        asset.assignedTo,
+        asset.serialNumber,
+        asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : '',
+        asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toLocaleDateString() : '',
+        asset.licenseExpiry ? new Date(asset.licenseExpiry).toLocaleDateString() : '',
+        asset.nextMaintenance ? new Date(asset.nextMaintenance).toLocaleDateString() : ''
+      ]);
+
+      // Add conditional formatting for dates
+      const today = new Date();
+      const critical = new Date();
+      const warning = new Date();
+      const notice = new Date();
+      critical.setDate(today.getDate() + 7);  // Critical: 7 days
+      warning.setDate(today.getDate() + 15);  // Warning: 15 days
+      notice.setDate(today.getDate() + 30);   // Notice: 30 days
+
+      // Color code expiring dates
+      [7, 8, 9].forEach(colIndex => { // Warranty, License, and Maintenance columns
+        const dateValue = row.getCell(colIndex).value;
+        if (dateValue) {
+          const date = new Date(dateValue);
+          if (date <= critical) {
+            row.getCell(colIndex).fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFFF0000' } // Red for critical
+            };
+          } else if (date <= warning) {
+            row.getCell(colIndex).fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFFF9900' } // Orange for warning
+            };
+          } else if (date <= notice) {
+            row.getCell(colIndex).fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFFFFF00' } // Yellow for notice
+            };
+          }
+        }
+      });
+    });
+
+    // Add legend
+    worksheet.addRow([]);
+    worksheet.addRow(['Color Legend']);
+    const legendRows = [
+      ['Critical (≤ 7 days)', 'FFFF0000'],
+      ['Warning (≤ 15 days)', 'FFFF9900'],
+      ['Notice (≤ 30 days)', 'FFFFFF00']
+    ];
+
+    legendRows.forEach(([text, color]) => {
+      const row = worksheet.addRow([text]);
+      row.getCell(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: color }
+      };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const duration = Date.now() - startTime;
+
+    logger.info('Excel report generated successfully', {
+      size: buffer.length,
+      duration,
+      assetCount: assets.length
+    });
+
+    await SystemLog.create({
+      level: 'info',
+      message: 'Excel report generated',
+      service: 'report-generator',
+      metadata: {
+        type: 'excel',
+        size: buffer.length,
+        duration,
+        assetCount: assets.length
+      }
+    });
+
+    return buffer;
+  } catch (error) {
+    logger.error('Error generating Excel report', {
+      error: error.message,
+      stack: error.stack,
+      assetCount: assets.length
+    });
+
+    await SystemLog.create({
+      level: 'error',
+      message: 'Error generating Excel report',
+      service: 'report-generator',
+      metadata: {
+        type: 'excel',
+        error: error.message,
+        assetCount: assets.length
+      },
+      trace: error.stack
+    });
+
+    throw error;
+  }
 };
