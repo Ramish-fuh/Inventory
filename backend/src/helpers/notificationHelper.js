@@ -11,8 +11,8 @@ export const createNotification = async (user, type, message) => {
     });
 
     await newNotification.save();  // Save the notification to the database
-    logger.info('Notification created:', newNotification); // Use logger instead of console.log
+    logger.info('Notification created:', newNotification); 
   } catch (error) {
-    logger.error('Error creating notification:', error); // Use logger instead of console.error
+    logger.error('Error creating notification:', error); 
   }
 };

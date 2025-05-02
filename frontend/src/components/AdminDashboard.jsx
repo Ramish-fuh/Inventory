@@ -11,6 +11,7 @@ import EditAssetForm from './EditAssetForm';
 import styles from './Dashboard.module.css';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import AddAssetModal from './AddAssetModal';
+import ExportInfoModal from './ExportInfoModal';
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ function AdminDashboard() {
   const [editingAsset, setEditingAsset] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteModalAsset, setDeleteModalAsset] = useState(null);
+  const [exportType, setExportType] = useState(null);
 
   useEffect(() => {
     apiClient.get('/api/assets')
@@ -266,6 +268,16 @@ function AdminDashboard() {
     }
   };
 
+  const handleExportClick = (format) => {
+    setExportType(format);
+  };
+
+  const handleConfirmExport = async () => {
+    if (!exportType) return;
+    await handleExport(exportType);
+    setExportType(null);
+  };
+
   if (loading) {
     return <div className={styles.loading}>Loading...</div>;
   }
@@ -292,7 +304,7 @@ function AdminDashboard() {
             <Button
               variant="contained"
               startIcon={<FileDownloadIcon />}
-              onClick={() => handleExport('pdf')}
+              onClick={() => handleExportClick('pdf')}
               style={{ marginRight: '8px' }}
             >
               Export PDF
@@ -300,7 +312,7 @@ function AdminDashboard() {
             <Button
               variant="contained"
               startIcon={<FileDownloadIcon />}
-              onClick={() => handleExport('excel')}
+              onClick={() => handleExportClick('excel')}
             >
               Export Excel
             </Button>
@@ -474,6 +486,14 @@ function AdminDashboard() {
           />
         </Dialog>
       )}
+
+      {/* Add ExportInfoModal */}
+      <ExportInfoModal
+        open={!!exportType}
+        onClose={() => setExportType(null)}
+        type={exportType}
+        onConfirm={handleConfirmExport}
+      />
     </div>
   );
 }
