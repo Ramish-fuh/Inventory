@@ -91,3 +91,20 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Search users for autocomplete
+export const searchUsers = async (req, res) => {
+  try {
+    const { query } = req.query;
+    const users = await User.find({
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { fullName: { $regex: query, $options: 'i' } }
+      ]
+    }).select('username fullName email'); // Only return necessary fields
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

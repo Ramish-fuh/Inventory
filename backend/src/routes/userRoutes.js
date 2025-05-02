@@ -1,8 +1,11 @@
 import express from 'express';
 import authMiddleware from '../middleware/authMiddleware.js';
-import { getUsers, getUserById, createUser, updateUser, deleteUser } from '../controllers/userController.js';
+import { getUsers, getUserById, createUser, updateUser, deleteUser, searchUsers } from '../controllers/userController.js';
 
 const router = express.Router();
+
+// GET search users for autocomplete
+router.get('/search', authMiddleware, searchUsers);
 
 // GET all users
 router.get('/', authMiddleware, getUsers);

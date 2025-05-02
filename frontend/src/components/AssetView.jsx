@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../index';
 import styles from './Dashboard.module.css';
+import EditAssetForm from './EditAssetForm';
 
 function AssetView() {
   const { id } = useParams();
   const [asset, setAsset] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const userRole = localStorage.getItem('userRole');
 
   useEffect(() => {
     apiClient.get(`/api/assets/${id}`)
@@ -21,6 +24,25 @@ function AssetView() {
         setLoading(false);
       });
   }, [id]);
+
+  const handleUpdate = (updatedAsset) => {
+    setAsset(updatedAsset);
+    setIsEditing(false);
+  };
+
+  const renderEditButton = () => {
+    if (userRole === 'Admin') {
+      return (
+        <button 
+          onClick={() => setIsEditing(true)}
+          className={styles.editButton}
+        >
+          Edit Asset
+        </button>
+      );
+    }
+    return null;
+  };
 
   if (loading) {
     return <div className={styles.loading}>Loading...</div>;
@@ -40,50 +62,59 @@ function AssetView() {
         <div className={styles.headerContent}>
           <h1>{asset.name}</h1>
           <p className={styles.subtitle}>Asset Details</p>
+          {renderEditButton()}
         </div>
       </header>
 
       <main className={styles.mainContent}>
-        <div className={styles.assetDetails}>
-          <section className={styles.detailCard}>
-            <h2>General Information</h2>
-            <div className={styles.detailGrid}>
-              <div className={styles.detailItem}>
-                <h3>Asset Tag</h3>
-                <p>{asset.assetTag}</p>
-              </div>
-              <div className={styles.detailItem}>
-                <h3>Category</h3>
-                <p>{asset.category}</p>
-              </div>
-              <div className={styles.detailItem}>
-                <h3>Status</h3>
-                <p className={`${styles.status} ${styles[asset.status.toLowerCase()]}`}>
-                  {asset.status}
-                </p>
-              </div>
-              {asset.assignedTo && (
+        {isEditing ? (
+          <EditAssetForm
+            asset={asset}
+            onClose={() => setIsEditing(false)}
+            onUpdate={handleUpdate}
+          />
+        ) : (
+          <div className={styles.assetDetails}>
+            <section className={styles.detailCard}>
+              <h2>General Information</h2>
+              <div className={styles.detailGrid}>
                 <div className={styles.detailItem}>
-                  <h3>Assigned To</h3>
-                  <p>{asset.assignedTo}</p>
+                  <h3>Asset Tag</h3>
+                  <p>{asset.assetTag}</p>
                 </div>
-              )}
-              {asset.location && (
                 <div className={styles.detailItem}>
-                  <h3>Location</h3>
-                  <p>{asset.location}</p>
+                  <h3>Category</h3>
+                  <p>{asset.category}</p>
                 </div>
-              )}
-            </div>
-          </section>
-
-          {asset.notes && (
-            <section className={`${styles.detailCard} ${styles.notes}`}>
-              <h2>Notes</h2>
-              <p>{asset.notes}</p>
+                <div className={styles.detailItem}>
+                  <h3>Status</h3>
+                  <p className={`${styles.status} ${styles[asset.status.toLowerCase()]}`}>
+                    {asset.status}
+                  </p>
+                </div>
+                {asset.assignedTo && (
+                  <div className={styles.detailItem}>
+                    <h3>Assigned To</h3>
+                    <p>{asset.assignedTo}</p>
+                  </div>
+                )}
+                {asset.location && (
+                  <div className={styles.detailItem}>
+                    <h3>Location</h3>
+                    <p>{asset.location}</p>
+                  </div>
+                )}
+              </div>
             </section>
-          )}
-        </div>
+
+            {asset.notes && (
+              <section className={`${styles.detailCard} ${styles.notes}`}>
+                <h2>Notes</h2>
+                <p>{asset.notes}</p>
+              </section>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

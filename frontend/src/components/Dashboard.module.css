@@ -76,7 +76,7 @@
 }
 
 .assetsSection {
-  margin-top: 48px;
+  margin-top: 32px;
 }
 
 .assetsSection h2 {
@@ -91,7 +91,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
-  width: 100%;
+  margin-top: 24px;
 }
 
 .assetCard {
@@ -224,6 +224,49 @@
   margin-top: 16px;
 }
 
+.editButton {
+  background: var(--apple-blue);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 16px;
+}
+
+.editButton:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.searchField {
+  flex: 1;
+  min-width: 200px;
+}
+
+.sortSelect {
+  min-width: 150px;
+}
+
+.searchField input {
+  background: var(--apple-white);
+}
+
+.searchField input::placeholder {
+  color: var(--apple-gray);
+}
+
 @media (max-width: 768px) {
   .headerContent h1 {
     font-size: 2rem;
@@ -235,5 +278,14 @@
 
   .assetsGrid {
     grid-template-columns: 1fr;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  .searchField,
+  .sortSelect {
+    width: 100%;
   }
 }
