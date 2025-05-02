@@ -12,9 +12,6 @@ const authMiddleware = (req, res, next) => {
     // Decode the JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Log the decoded information for debugging purposes
-    console.log('Decoded JWT:', decoded); // Ensure this contains the user data (e.g., user._id)
-
     // Attach the decoded user information to the req.user object
     req.user = decoded;
 
