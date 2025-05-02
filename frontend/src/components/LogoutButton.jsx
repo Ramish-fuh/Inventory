@@ -17,10 +17,6 @@ const LogoutButton = () => {
     <button 
       onClick={handleLogout} 
       style={{ 
-        position: 'fixed',
-        top: '8px', 
-        right: '24px',
-        zIndex: 1000,
         backgroundColor: 'transparent',
         color: 'var(--apple-blue)',
         padding: '8px 16px',
@@ -29,7 +25,8 @@ const LogoutButton = () => {
         fontSize: '0.9rem',
         fontWeight: '500',
         cursor: 'pointer',
-        transition: 'all 0.2s ease'
+        transition: 'all 0.2s ease',
+        marginLeft: '12px'
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.backgroundColor = 'var(--apple-blue)';
