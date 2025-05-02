@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/shuramishfuh/Inventory#readme",
   "dependencies": {
+    "dotenv": "^16.5.0",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.1"
   }
 }

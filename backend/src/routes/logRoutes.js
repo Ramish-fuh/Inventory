@@ -1,5 +1,5 @@
-
 import express from 'express';
+import authMiddleware from '../middleware/authMiddleware.js';
 import {
   getAllLogs,
   getLogById,
@@ -11,18 +11,18 @@ import {
 const router = express.Router();
 
 // GET /api/logs
-router.get('/', getAllLogs);
+router.get('/', authMiddleware, getAllLogs);
 
 // GET /api/logs/:id
-router.get('/:id', getLogById);
+router.get('/:id', authMiddleware, getLogById);
 
 // POST /api/logs
-router.post('/', createLog);
+router.post('/', authMiddleware, createLog);
 
 // PUT /api/logs/:id
-router.put('/:id', updateLog);
+router.put('/:id', authMiddleware, updateLog);
 
 // DELETE /api/logs/:id
-router.delete('/:id', deleteLog);
+router.delete('/:id', authMiddleware, deleteLog);
 
 export default router;
