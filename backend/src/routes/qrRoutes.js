@@ -1,6 +1,6 @@
 import express from 'express';
 import { generateQRCode } from '../utils/genQr.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 

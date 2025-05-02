@@ -64,19 +64,38 @@ export const getAssets = async (req, res) => {
 // @access  Public
 export const getAssetById = async (req, res) => {
   try {
-    const asset = await Asset.findById(req.params.id);
-    if (!asset) return res.status(404).json({ message: 'Asset not found' });
+    const { id } = req.params;
+    
+    // Validate if id is provided and is a valid ObjectId
+    if (!id || id === 'undefined') {
+      logger.error('Invalid asset ID provided:', id);
+      return res.status(400).json({ message: 'Invalid asset ID' });
+    }
 
-    // Log the asset fetching action
-    await Log.create({
-      user: req.user.id,
-      action: 'Asset Fetched',
-      category: 'Asset Management',
-      details: `Fetched asset with ID ${req.params.id}`,
-    });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      logger.error('Invalid ObjectId format:', id);
+      return res.status(400).json({ message: 'Invalid asset ID format' });
+    }
+
+    const asset = await Asset.findById(id);
+    if (!asset) {
+      logger.warn('Asset not found for ID:', id);
+      return res.status(404).json({ message: 'Asset not found' });
+    }
+
+    // Only create log if we have a user in the request
+    if (req.user) {
+      await Log.create({
+        user: req.user.id,
+        action: 'Asset Fetched',
+        category: 'Asset Management',
+        details: `Fetched asset with ID ${id}`,
+      });
+    }
 
     res.json(asset);
   } catch (error) {
+    logger.error('Error getting asset by ID:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };

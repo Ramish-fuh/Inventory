@@ -134,15 +134,73 @@ function AdminDashboard() {
   const generateQR = async (assetId) => {
     try {
       const response = await apiClient.get(`/api/qr/${assetId}`);
-      // Open QR code in new window
+      
+      // Create and style the QR code window
       const qrWindow = window.open('', '_blank');
-      qrWindow.document.write(`<img src="${response.data.qrCode}" alt="QR Code" />`);
+      qrWindow.document.write(`
+        <html>
+          <head>
+            <title>Asset QR Code</title>
+            <style>
+              body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                background-color: #f5f5f7;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+              }
+              .container {
+                text-align: center;
+                background: white;
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              }
+              img {
+                max-width: 300px;
+                margin-bottom: 1rem;
+              }
+              .url {
+                color: #666;
+                margin-top: 1rem;
+                word-break: break-all;
+              }
+              button {
+                margin-top: 1rem;
+                padding: 0.5rem 1rem;
+                background: #0066cc;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              }
+              button:hover {
+                opacity: 0.9;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="${response.data.qrCode}" alt="QR Code" />
+              <div class="url">${response.data.url}</div>
+              <button onclick="window.print()">Print QR Code</button>
+            </div>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error('Error generating QR code:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('userRole');
         navigate('/login');
+      } else if (error.response?.status === 400) {
+        // Show an error message to the user
+        alert('Could not generate QR code. Please make sure the asset ID is valid.');
+      } else {
+        alert('Error generating QR code. Please try again later.');
       }
     }
   };

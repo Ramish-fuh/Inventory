@@ -14,8 +14,17 @@ function AssetView() {
   const userRole = localStorage.getItem('userRole');
 
   useEffect(() => {
+    if (!id) {
+      setError('Invalid asset ID');
+      setLoading(false);
+      return;
+    }
+
     apiClient.get(`/api/assets/${id}`)
       .then(response => {
+        if (!response.data) {
+          throw new Error('Asset not found');
+        }
         setAsset(response.data);
         setLoading(false);
       })
@@ -27,7 +36,7 @@ function AssetView() {
           navigate('/login');
           return;
         }
-        setError('Failed to load asset details.');
+        setError(err.response?.status === 500 ? 'Server error - please try again later' : 'Failed to load asset details.');
         setLoading(false);
       });
   }, [id, navigate]);

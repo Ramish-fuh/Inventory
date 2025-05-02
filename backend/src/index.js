@@ -7,7 +7,7 @@ import userRoutes from './routes/userRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
-import { generateQRCode } from './utils/genQr.js';
+import qrRoutes from './routes/qrRoutes.js';
 import authMiddleware from './middleware/authMiddleware.js';
 import logger from './utils/logger.js';
 
@@ -31,7 +31,7 @@ app.use(authMiddleware); // all routes after this require login
 app.use('/api/users', userRoutes);
 app.use('/api/assets', assetRoutes); 
 app.use('/api/logs', logRoutes);
-app.use('/api/qr', generateQRCode); 
+app.use('/api/qr', qrRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // Error handling middleware
