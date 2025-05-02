@@ -4,13 +4,13 @@ import logger from './logger.js';
 export const generateQRCode = async (req, res) => {
   try {
     const { assetId } = req.params;
-    if (!assetId) {
-      return res.status(400).json({ message: 'Asset ID is required' });
+    if (!assetId || !assetId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: 'Valid Asset ID is required' });
     }
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    // Ensure the URL is properly formatted
-    const assetUrl = new URL(`/assets/${assetId}`, baseUrl).toString();
+    // Create a complete URL including /assets path
+    const assetUrl = `${baseUrl}/assets/${assetId}`;
 
     // Generate QR code as data URL
     const qrDataUrl = await QRCode.toDataURL(assetUrl, {
@@ -31,12 +31,12 @@ export const generateQRCode = async (req, res) => {
 
 export const generateQRCodeBuffer = async (assetId) => {
   try {
-    if (!assetId) {
-      throw new Error('Asset ID is required');
+    if (!assetId || !assetId.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new Error('Valid Asset ID is required');
     }
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const assetUrl = new URL(`/assets/${assetId}`, baseUrl).toString();
+    const assetUrl = `${baseUrl}/assets/${assetId}`;
 
     // Generate QR code as buffer
     return await QRCode.toBuffer(assetUrl, {

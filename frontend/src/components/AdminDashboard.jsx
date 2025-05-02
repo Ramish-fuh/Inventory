@@ -133,6 +133,13 @@ function AdminDashboard() {
 
   const generateQR = async (assetId) => {
     try {
+      // Validate assetId
+      if (!assetId) {
+        console.error('Invalid asset ID:', assetId);
+        alert('Invalid asset ID. Please try again.');
+        return;
+      }
+
       const response = await apiClient.get(`/api/qr/${assetId}`);
       
       // Create and style the QR code window
@@ -197,12 +204,20 @@ function AdminDashboard() {
         localStorage.removeItem('userRole');
         navigate('/login');
       } else if (error.response?.status === 400) {
-        // Show an error message to the user
         alert('Could not generate QR code. Please make sure the asset ID is valid.');
       } else {
         alert('Error generating QR code. Please try again later.');
       }
     }
+  };
+
+  const handleGenerateQR = (asset) => {
+    if (!asset || !asset._id) {
+      console.error('Asset or Asset ID is null:', asset);
+      alert('Invalid asset. Cannot generate QR code.');
+      return;
+    }
+    generateQR(asset._id);
   };
 
   if (loading) {
@@ -330,7 +345,7 @@ function AdminDashboard() {
                     </Typography>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
                       <Tooltip title="Generate QR Code">
-                        <IconButton onClick={() => generateQR(asset._id)}>
+                        <IconButton onClick={() => handleGenerateQR(asset)}>
                           <QrCode2Icon />
                         </IconButton>
                       </Tooltip>
