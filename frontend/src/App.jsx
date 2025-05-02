@@ -17,14 +17,21 @@ function App() {
         <Route path="/login" element={<Login />} />
 
         {/* Conditionally render routes based on user role */}
-        {userRole === 'admin' ? (
+        {userRole === 'Admin' && (
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        ) : (
+        )}
+        {userRole === 'user' && (
           <Route path="/user-dashboard" element={<UserDashboard />} />
+        )}
+        {!userRole && (
+          <Route path="*" element={<Login />} />
         )}
 
         {/* Default route */}
         <Route path="/" element={<div>Please log in</div>} />
+
+        {/* Add a fallback route to handle unmatched locations */}
+        <Route path="*" element={<Login />} />
       </Routes>
     </Router>
   );
