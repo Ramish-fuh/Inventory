@@ -42,7 +42,7 @@ function Login() {
       localStorage.setItem('userRole', userRole);
 
       // Redirect user based on role
-      if (userRole === 'admin') {
+      if (userRole === 'Admin') {
         window.location.href = '/admin-dashboard';
       } else {
         window.location.href = '/user-dashboard';
