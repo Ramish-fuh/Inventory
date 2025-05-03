@@ -8,7 +8,8 @@ import {
   Typography,
   Divider,
   Tooltip,
-  Button
+  Button,
+  Box
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import BuildIcon from '@mui/icons-material/Build';
@@ -152,21 +153,44 @@ const NotificationBell = () => {
             onClick={() => handleNotificationClick(notification)}
             style={{ 
               backgroundColor: notification.read ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-              padding: '12px 16px'
+              padding: '12px 16px',
+              whiteSpace: 'normal',
+              minHeight: 'auto'
             }}
           >
-            <Icon style={{ marginRight: '12px', color }} />
-            <ListItemText
-              primary={
-                <Typography 
-                  variant="subtitle2" 
-                  style={{ color }}
-                >
-                  {notification.message}
-                </Typography>
-              }
-              secondary={new Date(notification.createdAt).toLocaleString()}
-            />
+            <Box display="flex" width="100%">
+              <Box flexShrink={0} marginRight="12px" display="flex" alignItems="flex-start">
+                <Icon style={{ color, marginTop: '4px' }} />
+              </Box>
+              <Box flex={1}>
+                <ListItemText
+                  primary={
+                    <Typography 
+                      variant="subtitle2" 
+                      style={{ 
+                        color,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {notification.message}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography 
+                      variant="caption" 
+                      style={{ 
+                        display: 'block',
+                        marginTop: '4px'
+                      }}
+                    >
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </Typography>
+                  }
+                  style={{ margin: 0 }}
+                />
+              </Box>
+            </Box>
           </MenuItem>
         );
 
@@ -196,9 +220,18 @@ const NotificationBell = () => {
         onClose={handleClose}
         PaperProps={{
           style: {
-            maxHeight: '400px',
-            width: '350px',
+            maxHeight: '80vh',
+            width: '400px',
+            overflowX: 'hidden'
           },
+        }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
       >
         {renderMenuItems()}
