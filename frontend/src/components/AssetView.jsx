@@ -69,14 +69,6 @@ function AssetView() {
             Edit Asset
           </button>
         )}
-        {userRole === 'Admin' && (
-          <button 
-            onClick={handleDelete}
-            className={`${styles.deleteButton} ${styles.dangerButton}`}
-          >
-            Delete Asset
-          </button>
-        )}
       </div>
     );
   };
