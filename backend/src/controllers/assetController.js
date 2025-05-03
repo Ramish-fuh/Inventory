@@ -376,6 +376,9 @@ export const updateAsset = async (req, res) => {
       });
     }
 
+    // Capture old assignedTo for notification purposes
+    const oldAssignedTo = asset.assignedTo;
+
     if (req.body.status && req.body.status !== 'In Use') {
       req.body.assignedTo = null;
     }
@@ -386,7 +389,7 @@ export const updateAsset = async (req, res) => {
         id,
         { $set: req.body },
         { new: true, runValidators: true }
-      );
+      ).populate('assignedTo');
 
       // Create activity log with detailed changes
       await Log.create({
@@ -396,6 +399,35 @@ export const updateAsset = async (req, res) => {
         target: updatedAsset._id,
         details: `Asset ${updatedAsset.name} (${updatedAsset.assetTag}) updated. Changes: ${JSON.stringify(changes)}`
       });
+
+      // Notify previous owner if asset was unassigned
+      if (oldAssignedTo && (!updatedAsset.assignedTo || oldAssignedTo.toString() !== updatedAsset.assignedTo._id.toString())) {
+        await createNotification(
+          oldAssignedTo,
+          'asset',
+          `Asset ${updatedAsset.name} (${updatedAsset.assetTag}) has been unassigned from you`,
+          { assetId: updatedAsset._id }
+        );
+      }
+
+      // Notify new owner if asset was assigned
+      if (updatedAsset.assignedTo && (!oldAssignedTo || oldAssignedTo.toString() !== updatedAsset.assignedTo._id.toString())) {
+        await createNotification(
+          updatedAsset.assignedTo._id,
+          'asset',
+          `Asset ${updatedAsset.name} (${updatedAsset.assetTag}) has been assigned to you`,
+          { assetId: updatedAsset._id }
+        );
+      }
+      // Notify current owner about any other changes if the asset remains assigned to them
+      else if (updatedAsset.assignedTo && changes.length > 0) {
+        await createNotification(
+          updatedAsset.assignedTo._id,
+          'asset',
+          `Your assigned asset ${updatedAsset.name} (${updatedAsset.assetTag}) has been updated`,
+          { assetId: updatedAsset._id }
+        );
+      }
 
       await SystemLog.create({
         level: 'info',
@@ -408,16 +440,6 @@ export const updateAsset = async (req, res) => {
         },
         user: req.user._id
       });
-
-      // Notify relevant users about the update
-      if (updatedAsset.assignedTo) {
-        await createNotification(
-          updatedAsset.assignedTo,
-          'asset',
-          `Asset ${updatedAsset.name} assigned to you has been updated`,
-          { assetId: updatedAsset._id }
-        );
-      }
 
       logger.info('Asset updated successfully', {
         requesterId: req.user._id,

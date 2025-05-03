@@ -7,7 +7,8 @@ import {
   ListItemText,
   Typography,
   Divider,
-  Tooltip
+  Tooltip,
+  Button
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import BuildIcon from '@mui/icons-material/Build';
@@ -21,6 +22,7 @@ const NotificationBell = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [error, setError] = useState(null);
+  const [showReadNotifications, setShowReadNotifications] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
@@ -53,12 +55,15 @@ const NotificationBell = () => {
     if (!notification.read) {
       try {
         await apiClient.put(`/api/notifications/${notification._id}`);
-        fetchNotifications();
+        // Update the notification in the local state
+        setNotifications(notifications.map(n => 
+          n._id === notification._id ? { ...n, read: true } : n
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
       } catch (error) {
         console.error('Error marking notification as read:', error);
       }
     }
-    handleClose();
   };
 
   const getNotificationStyle = (type, message) => {
@@ -92,6 +97,10 @@ const NotificationBell = () => {
     return { color, Icon };
   };
 
+  const toggleReadNotifications = () => {
+    setShowReadNotifications(!showReadNotifications);
+  };
+
   if (error) {
     return (
       <Tooltip title={error}>
@@ -101,6 +110,74 @@ const NotificationBell = () => {
       </Tooltip>
     );
   }
+
+  const filteredNotifications = showReadNotifications 
+    ? notifications 
+    : notifications.filter(n => !n.read);
+
+  const renderMenuItems = () => {
+    if (notifications.length === 0) {
+      return [
+        <MenuItem key="no-notifications">
+          <ListItemText primary="No notifications" />
+        </MenuItem>
+      ];
+    }
+
+    const items = [
+      <MenuItem key="toggle-button">
+        <Button 
+          onClick={toggleReadNotifications}
+          fullWidth
+          size="small"
+        >
+          {showReadNotifications ? 'Show Unread Only' : 'Show All Notifications'}
+        </Button>
+      </MenuItem>,
+      <Divider key="top-divider" />
+    ];
+
+    if (filteredNotifications.length === 0) {
+      items.push(
+        <MenuItem key="no-filtered-notifications">
+          <ListItemText primary={showReadNotifications ? 'No notifications' : 'No unread notifications'} />
+        </MenuItem>
+      );
+    } else {
+      filteredNotifications.forEach((notification, index) => {
+        const { color, Icon } = getNotificationStyle(notification.type, notification.message);
+        items.push(
+          <MenuItem 
+            key={notification._id}
+            onClick={() => handleNotificationClick(notification)}
+            style={{ 
+              backgroundColor: notification.read ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+              padding: '12px 16px'
+            }}
+          >
+            <Icon style={{ marginRight: '12px', color }} />
+            <ListItemText
+              primary={
+                <Typography 
+                  variant="subtitle2" 
+                  style={{ color }}
+                >
+                  {notification.message}
+                </Typography>
+              }
+              secondary={new Date(notification.createdAt).toLocaleString()}
+            />
+          </MenuItem>
+        );
+
+        if (index < filteredNotifications.length - 1) {
+          items.push(<Divider key={`divider-${notification._id}`} />);
+        }
+      });
+    }
+
+    return items;
+  };
 
   return (
     <>
@@ -124,39 +201,7 @@ const NotificationBell = () => {
           },
         }}
       >
-        {notifications.length === 0 ? (
-          <MenuItem>
-            <ListItemText primary="No notifications" />
-          </MenuItem>
-        ) : (
-          notifications.map((notification, index) => {
-            const { color, Icon } = getNotificationStyle(notification.type, notification.message);
-            return [
-              <MenuItem 
-                key={notification._id}
-                onClick={() => handleNotificationClick(notification)}
-                style={{ 
-                  backgroundColor: notification.read ? 'inherit' : 'rgba(0, 0, 0, 0.04)',
-                  padding: '12px 16px'
-                }}
-              >
-                <Icon style={{ marginRight: '12px', color }} />
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="subtitle2" 
-                      style={{ color }}
-                    >
-                      {notification.message}
-                    </Typography>
-                  }
-                  secondary={new Date(notification.createdAt).toLocaleString()}
-                />
-              </MenuItem>,
-              index < notifications.length - 1 && <Divider key={`divider-${notification._id}`} />
-            ].filter(Boolean);
-          }).flat()
-        )}
+        {renderMenuItems()}
       </Menu>
     </>
   );

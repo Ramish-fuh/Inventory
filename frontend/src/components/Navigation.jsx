@@ -50,11 +50,9 @@ function Navigation() {
         )}
       </div>
       <div className={styles.rightControls}>
-        {userRole === 'Admin' && (
-          <ErrorBoundary fallback="Unable to load notifications">
-            <NotificationBell />
-          </ErrorBoundary>
-        )}
+        <ErrorBoundary fallback="Unable to load notifications">
+          <NotificationBell />
+        </ErrorBoundary>
         <Link to="/scan" className={styles.scanButton}>
           <Button
             variant="contained"

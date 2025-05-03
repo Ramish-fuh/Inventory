@@ -46,7 +46,7 @@ const checkMaintenanceDue = async () => {
         );
 
         // Create notification for assigned user and admins
-        const notificationText = `Maintenance due in ${daysUntilMaintenance} days for asset: ${asset.name} (${asset.assetTag})`;
+        const notificationText = `NOTICE: Maintenance due in ${daysUntilMaintenance} days for asset: ${asset.name} (${asset.assetTag})`;
         
         // Notify assigned user
         if (asset.assignedTo) {
@@ -176,7 +176,17 @@ const checkWarrantyExpiry = async () => {
           (asset.warrantyExpiry - new Date()) / (1000 * 60 * 60 * 24)
         );
 
-        const notificationText = `Warranty expiring in ${daysUntilExpiry} days for asset: ${asset.name} (${asset.assetTag})`;
+        const notificationText = `WARNING: Warranty expiring in ${daysUntilExpiry} days for asset: ${asset.name} (${asset.assetTag})`;
+
+        // Notify assigned user if exists
+        if (asset.assignedTo) {
+          await createNotification(
+            asset.assignedTo._id,
+            'warranty',
+            notificationText,
+            { assetId: asset._id }
+          );
+        }
 
         // Notify admins
         const admins = await User.find({ role: 'Admin' });
@@ -193,7 +203,10 @@ const checkWarrantyExpiry = async () => {
           assetId: asset._id,
           assetTag: asset.assetTag,
           daysUntilExpiry,
-          notifiedAdmins: admins.map(admin => admin._id)
+          notifiedUsers: [
+            asset.assignedTo?._id,
+            ...admins.map(admin => admin._id)
+          ]
         });
       } catch (error) {
         logger.error('Error processing warranty notification for asset', {
@@ -281,9 +294,9 @@ const checkLicenseExpiry = async () => {
           (asset.licenseExpiry - new Date()) / (1000 * 60 * 60 * 24)
         );
 
-        const notificationText = `License expiring in ${daysUntilExpiry} days for asset: ${asset.name} (${asset.assetTag})`;
+        const notificationText = `WARNING: License expiring in ${daysUntilExpiry} days for asset: ${asset.name} (${asset.assetTag})`;
 
-        // Notify assigned user and admins
+        // Notify assigned user if exists
         if (asset.assignedTo) {
           await createNotification(
             asset.assignedTo._id,
