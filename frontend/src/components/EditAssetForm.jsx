@@ -68,11 +68,12 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    // Required fields
+    // Required field validations
     if (!formData.name?.trim()) newErrors.name = 'Name is required';
     if (!formData.assetTag?.trim()) newErrors.assetTag = 'Asset tag is required';
     if (!formData.category) newErrors.category = 'Category is required';
     if (!formData.status) newErrors.status = 'Status is required';
+    if (!formData.location?.trim()) newErrors.location = 'Location is required';
     
     // Date validations
     const today = new Date();
@@ -105,14 +106,6 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
       newErrors.licenseExpiry = 'License expiry must be after purchase date';
     }
 
-    // Maintenance interval must be a positive integer
-    if (formData.maintenanceInterval) {
-      const interval = Number(formData.maintenanceInterval);
-      if (isNaN(interval) || interval < 0 || !Number.isInteger(interval)) {
-        newErrors.maintenanceInterval = 'Maintenance interval must be a positive whole number';
-      }
-    }
-
     // Last maintenance cannot be in the future
     if (lastMaintenance && lastMaintenance > today) {
       newErrors.lastMaintenance = 'Last maintenance date cannot be in the future';
@@ -121,6 +114,19 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
     // Next maintenance must be in the future
     if (nextMaintenance && nextMaintenance < today) {
       newErrors.nextMaintenance = 'Next maintenance date must be in the future';
+    }
+
+    // Status-based validations
+    if (formData.status === 'In Use' && !formData.assignedTo) {
+      newErrors.assignedTo = 'Asset must be assigned to a user when status is In Use';
+    }
+
+    // Maintenance interval validation
+    if (formData.maintenanceInterval) {
+      const interval = Number(formData.maintenanceInterval);
+      if (isNaN(interval) || interval <= 0 || !Number.isInteger(interval)) {
+        newErrors.maintenanceInterval = 'Maintenance interval must be a positive whole number';
+      }
     }
 
     setErrors(newErrors);
@@ -156,6 +162,15 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
       setErrors(prev => ({
         ...prev,
         [name]: undefined
+      }));
+    }
+
+    // Handle status change
+    if (name === 'status' && value !== 'In Use') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        assignedTo: null // Clear assignedTo when status is not 'In Use'
       }));
     }
 
@@ -207,6 +222,10 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Clear previous submission error
+    setErrors(prev => ({ ...prev, submit: undefined }));
+
     if (!validateForm()) return;
 
     try {
@@ -323,6 +342,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               error={!!errors.location}
               helperText={errors.location}
               fullWidth
+              required
             />
 
             <TextField

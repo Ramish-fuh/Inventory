@@ -6,6 +6,7 @@ import styles from './Navigation.module.css';
 import { jwtDecode } from 'jwt-decode';
 import LogoutButton from './LogoutButton';
 import NotificationBell from './NotificationBell';
+import ErrorBoundary from './ErrorBoundary';
 
 function Navigation() {
   const location = useLocation();
@@ -49,7 +50,11 @@ function Navigation() {
         )}
       </div>
       <div className={styles.rightControls}>
-        {userRole === 'Admin' && <NotificationBell />}
+        {userRole === 'Admin' && (
+          <ErrorBoundary fallback="Unable to load notifications">
+            <NotificationBell />
+          </ErrorBoundary>
+        )}
         <Link to="/scan" className={styles.scanButton}>
           <Button
             variant="contained"

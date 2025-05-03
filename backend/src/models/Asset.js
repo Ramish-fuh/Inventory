@@ -4,34 +4,46 @@ import logger from '../utils/logger.js';
 const assetSchema = new mongoose.Schema({
   assetTag: { 
     type: String, 
-    required: true, 
+    required: [true, 'Asset tag is required'], 
     unique: true,
     trim: true
   },
   name: { 
     type: String, 
-    required: true,
+    required: [true, 'Name is required'],
     trim: true 
   },
   category: { 
     type: String, 
-    enum: ['Laptop', 'Desktop', 'Server', 'Mobile', 'Software', 'Other'], 
-    required: true 
+    enum: {
+      values: ['Laptop', 'Desktop', 'Server', 'Mobile', 'Software', 'Other'],
+      message: '{VALUE} is not a valid category'
+    },
+    required: [true, 'Category is required']
   },
   status: { 
     type: String, 
-    enum: ['Available', 'In Use', 'Under Maintenance', 'Retired'], 
+    enum: {
+      values: ['Available', 'In Use', 'Under Maintenance', 'Retired'],
+      message: '{VALUE} is not a valid status'
+    },
     default: 'Available',
-    required: true
+    required: [true, 'Status is required']
   },
   assignedTo: { 
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    default: null
+    default: null,
+    validate: {
+      validator: function(v) {
+        return this.status !== 'In Use' || (this.status === 'In Use' && v);
+      },
+      message: 'Asset must be assigned to a user when status is In Use'
+    }
   },
   location: { 
     type: String,
-    required: true,
+    required: [true, 'Location is required'],
     trim: true
   },
   serialNumber: { 
@@ -42,55 +54,54 @@ const assetSchema = new mongoose.Schema({
     type: Date,
     validate: {
       validator: function(v) {
-        return !v || !isNaN(new Date(v).getTime());
+        return !v || v <= new Date();
       },
-      message: 'Invalid purchase date format'
+      message: 'Purchase date cannot be in the future'
     }
   },
   warrantyExpiry: { 
     type: Date,
     validate: {
       validator: function(v) {
-        return !v || !isNaN(new Date(v).getTime());
+        return !v || !this.purchaseDate || v >= this.purchaseDate;
       },
-      message: 'Invalid warranty expiry date format'
+      message: 'Warranty expiry must be after purchase date'
     }
   },
   licenseExpiry: { 
     type: Date,
     validate: {
       validator: function(v) {
-        return !v || !isNaN(new Date(v).getTime());
+        return !v || !this.purchaseDate || v >= this.purchaseDate;
       },
-      message: 'Invalid license expiry date format'
+      message: 'License expiry must be after purchase date'
     }
   },
   nextMaintenance: { 
     type: Date,
     validate: {
       validator: function(v) {
-        return !v || !isNaN(new Date(v).getTime());
+        return !v || v > new Date();
       },
-      message: 'Invalid next maintenance date format'
+      message: 'Next maintenance date must be in the future'
     }
   },
-  maintenanceInterval: { 
+  maintenanceInterval: {
     type: Number,
-    min: [0, 'Maintenance interval cannot be negative'],
     validate: {
       validator: function(v) {
-        return !v || Number.isInteger(Number(v));
+        return !v || (Number.isInteger(v) && v > 0);
       },
-      message: 'Maintenance interval must be a whole number'
+      message: 'Maintenance interval must be a positive whole number'
     }
   },
   lastMaintenance: { 
     type: Date,
     validate: {
       validator: function(v) {
-        return !v || !isNaN(new Date(v).getTime());
+        return !v || v <= new Date();
       },
-      message: 'Invalid last maintenance date format'
+      message: 'Last maintenance date cannot be in the future'
     }
   },
   notes: {
@@ -112,8 +123,9 @@ assetSchema.pre('validate', function(next) {
   next();
 });
 
-// Middleware to handle date fields
+// Handle date fields and cleanup
 assetSchema.pre('save', function(next) {
+  // Convert date strings to actual Date objects
   const dateFields = ['purchaseDate', 'warrantyExpiry', 'licenseExpiry', 'nextMaintenance', 'lastMaintenance'];
   
   dateFields.forEach(field => {
@@ -121,6 +133,8 @@ assetSchema.pre('save', function(next) {
       const date = new Date(this[field]);
       if (!isNaN(date.getTime())) {
         this[field] = date;
+      } else {
+        this[field] = null;
       }
     }
   });

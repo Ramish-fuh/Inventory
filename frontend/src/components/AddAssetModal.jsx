@@ -38,13 +38,66 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.assetTag) newErrors.assetTag = 'Asset tag is required';
+    
+    // Required field validations
+    if (!formData.name?.trim()) newErrors.name = 'Name is required';
+    if (!formData.assetTag?.trim()) newErrors.assetTag = 'Asset tag is required';
     if (!formData.category) newErrors.category = 'Category is required';
     if (!formData.status) newErrors.status = 'Status is required';
-    
-    if (formData.maintenanceInterval && isNaN(formData.maintenanceInterval)) {
-      newErrors.maintenanceInterval = 'Must be a number';
+    if (!formData.location?.trim()) newErrors.location = 'Location is required';
+
+    // Date validations
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const validateDate = (dateStr) => {
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      return !isNaN(date.getTime()) ? date : null;
+    };
+
+    const purchaseDate = validateDate(formData.purchaseDate);
+    const warrantyExpiry = validateDate(formData.warrantyExpiry);
+    const licenseExpiry = validateDate(formData.licenseExpiry);
+    const lastMaintenance = validateDate(formData.lastMaintenance);
+    const nextMaintenance = validateDate(formData.nextMaintenance);
+
+    // Purchase date cannot be in the future
+    if (purchaseDate && purchaseDate > today) {
+      newErrors.purchaseDate = 'Purchase date cannot be in the future';
+    }
+
+    // Warranty expiry must be after purchase date
+    if (warrantyExpiry && purchaseDate && warrantyExpiry < purchaseDate) {
+      newErrors.warrantyExpiry = 'Warranty expiry must be after purchase date';
+    }
+
+    // License expiry validation
+    if (licenseExpiry && purchaseDate && licenseExpiry < purchaseDate) {
+      newErrors.licenseExpiry = 'License expiry must be after purchase date';
+    }
+
+    // Last maintenance cannot be in the future
+    if (lastMaintenance && lastMaintenance > today) {
+      newErrors.lastMaintenance = 'Last maintenance date cannot be in the future';
+    }
+
+    // Next maintenance must be in the future
+    if (nextMaintenance && nextMaintenance < today) {
+      newErrors.nextMaintenance = 'Next maintenance date must be in the future';
+    }
+
+    // Status-based validations
+    if (formData.status === 'In Use' && !formData.assignedTo) {
+      newErrors.assignedTo = 'Asset must be assigned to a user when status is In Use';
+    }
+
+    // Maintenance interval validation
+    if (formData.maintenanceInterval) {
+      const interval = Number(formData.maintenanceInterval);
+      if (isNaN(interval) || interval <= 0 || !Number.isInteger(interval)) {
+        newErrors.maintenanceInterval = 'Maintenance interval must be a positive whole number';
+      }
     }
 
     setErrors(newErrors);
@@ -57,6 +110,7 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
       ...prev,
       [name]: value
     }));
+
     // Clear error when field is edited
     if (errors[name]) {
       setErrors(prev => ({
@@ -64,14 +118,69 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
         [name]: undefined
       }));
     }
+
+    // Handle status change
+    if (name === 'status' && value !== 'In Use') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        assignedTo: '' // Clear assignedTo when status is not 'In Use'
+      }));
+    }
+  };
+
+  const prepareDataForSubmission = () => {
+    const data = { ...formData };
+    
+    // Handle date fields
+    const dateFields = ['purchaseDate', 'warrantyExpiry', 'licenseExpiry', 'nextMaintenance', 'lastMaintenance'];
+    dateFields.forEach(field => {
+      if (data[field]) {
+        // Ensure date is in ISO format for MongoDB
+        const date = new Date(data[field]);
+        if (!isNaN(date.getTime())) {
+          data[field] = date.toISOString();
+        } else {
+          data[field] = null;
+        }
+      } else {
+        data[field] = null;
+      }
+    });
+
+    // Convert maintenanceInterval to number or null
+    if (data.maintenanceInterval === '') {
+      data.maintenanceInterval = null;
+    } else if (data.maintenanceInterval) {
+      data.maintenanceInterval = Number(data.maintenanceInterval);
+    }
+
+    // Handle assignedTo field
+    if (!data.assignedTo || data.assignedTo === '') {
+      data.assignedTo = null;
+    }
+
+    // Convert empty strings to null for optional fields
+    ['notes', 'serialNumber'].forEach(field => {
+      if (data[field] === '') {
+        data[field] = null;
+      }
+    });
+
+    return data;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Clear previous submission error
+    setErrors(prev => ({ ...prev, submit: undefined }));
+    
     if (!validateForm()) return;
 
     try {
-      const response = await apiClient.post('/api/assets', formData);
+      const dataToSubmit = prepareDataForSubmission();
+      const response = await apiClient.post('/api/assets', dataToSubmit);
       onAssetAdded(response.data);
       setFormData(initialFormData);
       onClose();

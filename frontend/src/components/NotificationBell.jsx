@@ -6,33 +6,38 @@ import {
   MenuItem, 
   ListItemText,
   Typography,
-  Divider
+  Divider,
+  Tooltip
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import BuildIcon from '@mui/icons-material/Build';
 import KeyIcon from '@mui/icons-material/Key';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import apiClient from '../index';
+import styles from './Navigation.module.css';
 
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchNotifications();
-    // Poll for new notifications every minute
-    const interval = setInterval(fetchNotifications, 60000);
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
     try {
+      setError(null);
       const response = await apiClient.get('/api/notifications');
-      setNotifications(response.data);
+      setNotifications(response.data || []);
       setUnreadCount(response.data.filter(n => !n.read).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      setError('Unable to load notifications');
     }
   };
 
@@ -87,9 +92,23 @@ const NotificationBell = () => {
     return { color, Icon };
   };
 
+  if (error) {
+    return (
+      <Tooltip title={error}>
+        <IconButton color="inherit">
+          <NotificationsIcon />
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
   return (
     <>
-      <IconButton color="inherit" onClick={handleClick}>
+      <IconButton
+        color="inherit"
+        onClick={handleClick}
+        className={styles.notificationBell}
+      >
         <Badge badgeContent={unreadCount} color="error">
           <NotificationsIcon />
         </Badge>

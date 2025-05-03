@@ -162,6 +162,54 @@ export const createAsset = async (req, res) => {
       assetData: req.body
     });
 
+    // Validate required fields
+    const { name, assetTag, category, status, location } = req.body;
+    const validationErrors = {};
+
+    if (!name?.trim()) validationErrors.name = 'Name is required';
+    if (!assetTag?.trim()) validationErrors.assetTag = 'Asset tag is required';
+    if (!category) validationErrors.category = 'Category is required';
+    if (!status) validationErrors.status = 'Status is required';
+    if (!location?.trim()) validationErrors.location = 'Location is required';
+
+    // Status-specific validation
+    if (status === 'In Use' && !req.body.assignedTo) {
+      validationErrors.assignedTo = 'Asset must be assigned to a user when status is In Use';
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: validationErrors
+      });
+    }
+
+    // Clean up date fields
+    const dateFields = ['purchaseDate', 'warrantyExpiry', 'licenseExpiry', 'nextMaintenance', 'lastMaintenance'];
+    dateFields.forEach(field => {
+      if (req.body[field]) {
+        const date = new Date(req.body[field]);
+        if (!isNaN(date.getTime())) {
+          req.body[field] = date;
+        } else {
+          req.body[field] = null;
+        }
+      }
+    });
+
+    // Validate maintenance interval
+    if (req.body.maintenanceInterval) {
+      const interval = Number(req.body.maintenanceInterval);
+      if (isNaN(interval) || interval <= 0 || !Number.isInteger(interval)) {
+        return res.status(400).json({
+          message: 'Validation error',
+          errors: {
+            maintenanceInterval: 'Maintenance interval must be a positive whole number'
+          }
+        });
+      }
+    }
+
     const asset = new Asset(req.body);
     await asset.save();
 
@@ -206,6 +254,7 @@ export const createAsset = async (req, res) => {
     });
 
     res.status(201).json(asset);
+
   } catch (error) {
     logger.error('Error creating asset', {
       error: error.message,
@@ -213,6 +262,30 @@ export const createAsset = async (req, res) => {
       requesterId: req.user._id,
       assetData: req.body
     });
+
+    // Handle MongoDB validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.keys(error.errors).reduce((acc, key) => {
+        acc[key] = error.errors[key].message;
+        return acc;
+      }, {});
+
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: validationErrors
+      });
+    }
+
+    // Handle duplicate key errors (e.g., assetTag uniqueness)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: {
+          [field]: `This ${field} is already in use`
+        }
+      });
+    }
 
     await SystemLog.create({
       level: 'error',
@@ -226,7 +299,10 @@ export const createAsset = async (req, res) => {
       user: req.user._id
     });
 
-    res.status(500).json({ message: 'Error creating asset' });
+    res.status(500).json({ 
+      message: 'Error creating asset',
+      error: error.message 
+    });
   }
 };
 
