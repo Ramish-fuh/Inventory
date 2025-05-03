@@ -52,20 +52,24 @@ const startServer = async () => {
     // Handle server errors
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
-        logger.error('Port is already in use. Trying to close existing connection...', { port: PORT });
+        logger.error('Port is already in use. Attempting to recover...', { port: PORT });
         
-        // Try to recover by closing the port
-        require('child_process').exec(`lsof -ti tcp:${PORT} | xargs kill`, (err) => {
-          if (err) {
-            logger.error('Could not release port. Please manually stop the process using it.', { error: err });
-            process.exit(1);
-          } else {
-            logger.info('Successfully released port. Restarting server...');
+        // Create a new server to test the port
+        const testServer = require('net').createServer()
+          .once('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+              logger.error('Port is still in use. Please ensure no other process is using it.', { port: PORT });
+              process.exit(1);
+            }
+          })
+          .once('listening', () => {
+            testServer.close();
+            logger.info('Port is now available. Restarting server...');
             setTimeout(() => {
               server.listen(PORT);
             }, 1000);
-          }
-        });
+          })
+          .listen(PORT);
       } else {
         logger.error('Server error:', { error: error.message, stack: error.stack });
         process.exit(1);
