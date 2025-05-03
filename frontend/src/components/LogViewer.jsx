@@ -236,6 +236,20 @@ const LogViewer = () => {
     <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)}>
       <DialogTitle>Export Logs</DialogTitle>
       <DialogContent>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body1" gutterBottom>
+            Please note: Depending on your selected date range and filters, the export might take some time to process.
+          </Typography>
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.light', borderRadius: 1, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+            <WarningIcon color="warning" sx={{ mt: 0.5 }} />
+            <Typography variant="body2">
+              {activeTab === 'system' 
+                ? 'System logs can be quite large, especially if exporting a wide date range. The generated file might be several megabytes in size.'
+                : 'Activity logs contain detailed user actions and might be large when exporting extended periods. Consider using date filters to reduce file size.'}
+            </Typography>
+          </Box>
+        </Box>
+
         <Grid container spacing={2} sx={{ mt: 1 }}>
           <Grid item xs={12}>
             <FormControl fullWidth>
