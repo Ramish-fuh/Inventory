@@ -43,9 +43,22 @@ export const assetAccessControl = async (req, res, next) => {
     }
 
     // For PUT requests (updates)
-    if (method === 'PUT' && role === 'Technician') {
-      // Technicians can update assets
-      return next();
+    if (method === 'PUT') {
+      // Check if the update includes assignment changes or status change to 'In Use'
+      if (req.body.hasOwnProperty('assignedTo') || req.body.status === 'In Use') {
+        logger.warn('Non-admin attempting to assign asset or change status to In Use', {
+          userId: req.user._id,
+          role,
+          assetId,
+          attemptedChange: req.body
+        });
+        return res.status(403).json({ message: 'Only administrators can assign assets or set status to In Use' });
+      }
+      
+      // Technicians can update other properties
+      if (role === 'Technician') {
+        return next();
+      }
     }
 
     // For POST/DELETE requests

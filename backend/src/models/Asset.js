@@ -33,13 +33,7 @@ const assetSchema = new mongoose.Schema({
   assignedTo: { 
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    default: null,
-    validate: {
-      validator: function(v) {
-        return this.status !== 'In Use' || (this.status === 'In Use' && v);
-      },
-      message: 'Asset must be assigned to a user when status is In Use'
-    }
+    default: null
   },
   location: { 
     type: String,

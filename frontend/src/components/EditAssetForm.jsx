@@ -11,6 +11,8 @@ import {
   FormControl,
   InputLabel,
   FormHelperText,
+  Autocomplete,
+  CircularProgress,
 } from '@mui/material';
 import apiClient from '../index';
 import styles from './EditAssetForm.module.css';
@@ -36,6 +38,10 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
   const [errors, setErrors] = useState({});
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const userRole = localStorage.getItem('userRole');
+  const isAdmin = userRole === 'Admin';
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (asset) {
@@ -62,6 +68,15 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
         maintenanceInterval: asset.maintenanceInterval || '',
         lastMaintenance: formatDate(asset.lastMaintenance)
       });
+
+      // Set selected user if asset is assigned
+      if (asset.assignedTo) {
+        setSelectedUser({
+          _id: asset.assignedTo._id,
+          fullName: asset.assignedTo.fullName,
+          username: asset.assignedTo.username
+        });
+      }
     }
   }, [asset]);
 
@@ -134,7 +149,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
   };
 
   const handleUserSearch = async (value) => {
-    if (value.length < 2) {
+    if (!value || value.length < 2) {
       setUserSuggestions([]);
       return;
     }
@@ -150,32 +165,38 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
     }
   };
 
-  const handleChange = async (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    // Clear error when field is edited
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
-    }
-
-    // Handle status change
-    if (name === 'status' && value !== 'In Use') {
+  // Modified handleChange to work with Autocomplete
+  const handleChange = (e, field, value) => {
+    if (field === 'assignedTo') {
+      setSelectedUser(value);
       setFormData(prev => ({
         ...prev,
-        [name]: value,
-        assignedTo: null // Clear assignedTo when status is not 'In Use'
+        assignedTo: value ? value._id : null
       }));
-    }
+    } else {
+      const { name, value: fieldValue } = e.target;
+      setFormData(prev => ({
+        ...prev,
+        [name]: fieldValue
+      }));
 
-    if (name === 'assignedTo') {
-      handleUserSearch(value);
+      // Clear error when field is edited
+      if (errors[name]) {
+        setErrors(prev => ({
+          ...prev,
+          [name]: undefined
+        }));
+      }
+
+      // Handle status change
+      if (name === 'status' && fieldValue !== 'In Use') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: fieldValue,
+          assignedTo: null
+        }));
+        setSelectedUser(null);
+      }
     }
   };
 
@@ -313,16 +334,52 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               <Select
                 name="status"
                 value={formData.status}
-                onChange={handleChange}
+                onChange={(e) => handleChange(e)}
                 label="Status"
+                disabled={!isAdmin && formData.status === 'In Use'}
               >
                 <MenuItem value="Available">Available</MenuItem>
-                <MenuItem value="In Use">In Use</MenuItem>
+                <MenuItem value="In Use" disabled={!isAdmin}>In Use</MenuItem>
                 <MenuItem value="Under Maintenance">Under Maintenance</MenuItem>
                 <MenuItem value="Retired">Retired</MenuItem>
               </Select>
-              {errors.status && <FormHelperText>{errors.status}</FormHelperText>}
+              {!isAdmin && formData.status === 'In Use' && (
+                <FormHelperText>Only administrators can change assigned assets</FormHelperText>
+              )}
             </FormControl>
+
+            {isAdmin && formData.status === 'In Use' && (
+              <FormControl fullWidth error={!!errors.assignedTo}>
+                <Autocomplete
+                  value={selectedUser}
+                  onChange={(e, newValue) => handleChange(e, 'assignedTo', newValue)}
+                  onInputChange={(e, newInputValue) => {
+                    setSearchTerm(newInputValue);
+                    handleUserSearch(newInputValue);
+                  }}
+                  options={userSuggestions}
+                  getOptionLabel={(option) => `${option.fullName} (${option.username})`}
+                  loading={isSearching}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Assigned To"
+                      error={!!errors.assignedTo}
+                      helperText={errors.assignedTo}
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {isSearching ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                    />
+                  )}
+                />
+              </FormControl>
+            )}
 
             <TextField
               label="Serial Number"

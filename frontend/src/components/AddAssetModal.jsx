@@ -20,8 +20,7 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
     name: '',
     assetTag: '',
     category: '',
-    status: '',
-    assignedTo: '',
+    status: 'Available', // Default to Available since we can't assign during creation
     location: '',
     notes: '',
     serialNumber: '',
@@ -43,7 +42,6 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
     if (!formData.name?.trim()) newErrors.name = 'Name is required';
     if (!formData.assetTag?.trim()) newErrors.assetTag = 'Asset tag is required';
     if (!formData.category) newErrors.category = 'Category is required';
-    if (!formData.status) newErrors.status = 'Status is required';
     if (!formData.location?.trim()) newErrors.location = 'Location is required';
 
     // Date validations
@@ -87,11 +85,6 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
       newErrors.nextMaintenance = 'Next maintenance date must be in the future';
     }
 
-    // Status-based validations
-    if (formData.status === 'In Use' && !formData.assignedTo) {
-      newErrors.assignedTo = 'Asset must be assigned to a user when status is In Use';
-    }
-
     // Maintenance interval validation
     if (formData.maintenanceInterval) {
       const interval = Number(formData.maintenanceInterval);
@@ -116,15 +109,6 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
       setErrors(prev => ({
         ...prev,
         [name]: undefined
-      }));
-    }
-
-    // Handle status change
-    if (name === 'status' && value !== 'In Use') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        assignedTo: '' // Clear assignedTo when status is not 'In Use'
       }));
     }
   };
@@ -153,11 +137,6 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
       data.maintenanceInterval = null;
     } else if (data.maintenanceInterval) {
       data.maintenanceInterval = Number(data.maintenanceInterval);
-    }
-
-    // Handle assignedTo field
-    if (!data.assignedTo || data.assignedTo === '') {
-      data.assignedTo = null;
     }
 
     // Convert empty strings to null for optional fields
@@ -250,16 +229,13 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
               <InputLabel>Status</InputLabel>
               <Select
                 name="status"
-                value={formData.status}
-                onChange={handleChange}
+                value="Available"
+                disabled
                 label="Status"
               >
                 <MenuItem value="Available">Available</MenuItem>
-                <MenuItem value="In Use">In Use</MenuItem>
-                <MenuItem value="Under Maintenance">Under Maintenance</MenuItem>
-                <MenuItem value="Retired">Retired</MenuItem>
               </Select>
-              {errors.status && <FormHelperText>{errors.status}</FormHelperText>}
+              <FormHelperText>Assets are created as Available and can be assigned later by an admin</FormHelperText>
             </FormControl>
 
             <TextField
