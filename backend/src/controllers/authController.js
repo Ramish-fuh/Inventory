@@ -274,23 +274,42 @@ export const setupInitialAdmin = async (req, res) => {
     logger.debug('Setup initial admin request received', {
         path: req.path,
         method: req.method,
-        body: req.body,
-        headers: req.headers
+        ip: req.ip
     });
 
     try {
+        // Check if we're in production and if initialization is allowed
+        if (process.env.NODE_ENV === 'production' && process.env.ALLOW_ADMIN_SETUP !== 'true') {
+            logger.warn('Attempted admin setup in production without authorization', { ip: req.ip });
+            return res.status(403).json({ message: 'Admin setup is disabled in production' });
+        }
+
+        // Verify initialization token
+        const initToken = req.headers['x-init-token'];
+        if (!initToken || initToken !== process.env.INIT_TOKEN) {
+            logger.warn('Invalid initialization token', { ip: req.ip });
+            return res.status(403).json({ message: 'Invalid initialization token' });
+        }
+
+        // Check if admin already exists
         const adminExists = await User.findOne({ role: 'Admin' });
         if (adminExists) {
             logger.debug('Admin user already exists', { adminId: adminExists._id });
             return res.status(400).json({ message: 'Admin user already exists' });
         }
 
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash('Admin123!', salt);
+        // Validate provided password or use secure generated password
+        const { password = crypto.randomBytes(16).toString('hex') } = req.body;
+        if (password.length < 12) {
+            return res.status(400).json({ message: 'Password must be at least 12 characters long' });
+        }
+
+        const salt = await bcrypt.genSalt(12); // Increased from 10 to 12 rounds
+        const passwordHash = await bcrypt.hash(password, salt);
         
         const admin = new User({
             username: 'admin',
-            email: 'admin@example.com',
+            email: process.env.ADMIN_EMAIL || 'admin@example.com',
             fullName: 'System Admin',
             role: 'Admin',
             department: 'IT',
@@ -300,19 +319,34 @@ export const setupInitialAdmin = async (req, res) => {
 
         await admin.save();
 
+        // Create system log entry
+        await SystemLog.create({
+            level: 'info',
+            message: 'Initial admin user created',
+            service: 'auth-service',
+            metadata: {
+                ip: req.ip,
+                userAgent: req.headers['user-agent']
+            }
+        });
+
         logger.info('Initial admin user created via setup endpoint', {
             userId: admin._id,
-            username: admin.username
+            username: admin.username,
+            ip: req.ip
         });
 
         return res.status(201).json({ 
             message: 'Initial admin user created successfully',
-            username: admin.username
+            username: admin.username,
+            password: password === req.body.password ? undefined : password // Only return if auto-generated
         });
+
     } catch (error) {
         logger.error('Setup initial admin error', {
             error: error.message,
-            stack: error.stack
+            stack: error.stack,
+            ip: req.ip
         });
         return res.status(500).json({ message: 'Error creating initial admin user' });
     }
