@@ -3,50 +3,75 @@
 ## Application Architecture
 
 ### Frontend Architecture
+
+The frontend is built using React with Vite, providing a modern and efficient development experience.
+
+#### Component Structure
 ```
 frontend/
 ├── src/
-│   ├── components/         # React components
-│   ├── assets/            # Static assets
-│   ├── App.jsx            # Main application component
-│   ├── index.js           # Application entry point
-│   └── main.jsx           # React rendering setup
+│   ├── components/           # React components
+│   │   ├── Dashboard/       # Dashboard views
+│   │   ├── Asset/          # Asset management
+│   │   ├── Auth/          # Authentication
+│   │   └── Common/        # Shared components
+│   ├── assets/             # Static assets
+│   └── styles/            # CSS modules
 ```
 
 #### Key Technologies
 - React 18+
-- Vite
-- Material UI
+- Vite for build tooling
+- Material UI for components
 - Axios for API communication
 - JWT for authentication
-- HTML5 QR Scanner
+- QR Scanner implementation
 
-#### Component Structure
-- **Auth Components**: Login, RecoverPassword, ResetPassword
-- **Dashboard Components**: AdminDashboard, UserDashboard
-- **Asset Management**: AddAssetModal, EditAssetForm, AssetView
-- **Utility Components**: QRScanner, NotificationBell, Navigation
+#### Core Components
+- **Asset Management**
+  - `AddAssetModal.jsx`: Asset creation interface
+  - `EditAssetForm.jsx`: Asset editing interface
+  - `AssetView.jsx`: Asset details display
+  
+- **User Interface**
+  - `Navigation.jsx`: Main navigation bar
+  - `NotificationBell.jsx`: Real-time notifications
+  - `QRScanner.jsx`: Asset scanning interface
+  
+- **Authentication**
+  - `Login.jsx`: User authentication
+  - `RecoverPassword.jsx`: Password recovery flow
+  - `ResetPassword.jsx`: Password reset interface
 
 ### Backend Architecture
+
+The backend uses Node.js with Express, implementing a RESTful API architecture.
+
+#### Service Structure
 ```
 backend/
 ├── src/
-│   ├── config/            # Configuration settings
-│   ├── controllers/       # Request handlers
-│   ├── models/           # Database models
-│   ├── routes/           # API route definitions
-│   ├── middleware/       # Custom middleware
-│   ├── utils/           # Utility functions
-│   └── services/        # Business logic
+│   ├── controllers/         # Request handlers
+│   ├── models/             # Database schemas
+│   ├── routes/             # API endpoints
+│   ├── middleware/         # Request processing
+│   ├── services/           # Business logic
+│   └── utils/             # Helper functions
 ```
 
 #### Key Technologies
-- Node.js
-- Express.js
+- Node.js with Express
 - MongoDB with Mongoose
-- Winston for logging
 - JWT for authentication
+- Winston for logging
 - Nodemailer for emails
+- QR code generation
+
+#### Core Components
+- **Controllers**: Handle HTTP requests and responses
+- **Models**: Define data structure and validation
+- **Services**: Implement business logic
+- **Middleware**: Process requests and authentication
 
 #### Database Schema
 
@@ -57,9 +82,11 @@ backend/
   email: String,
   fullName: String,
   passwordHash: String,
-  role: Enum['Admin', 'Technician', 'Viewer'],
+  role: String,            // 'Admin' or 'User'
   resetPasswordToken: String,
-  resetPasswordExpires: Date
+  resetPasswordExpires: Date,
+  createdAt: Date,
+  updatedAt: Date
 }
 ```
 
@@ -69,8 +96,8 @@ backend/
   name: String,
   assetTag: String,
   category: String,
-  status: Enum['Available', 'In Use', 'Under Maintenance', 'Retired'],
-  assignedTo: ObjectId,
+  status: String,         // 'Available', 'In Use', 'Maintenance', 'Retired'
+  assignedTo: ObjectId,   // Reference to User
   location: String,
   serialNumber: String,
   purchaseDate: Date,
@@ -79,143 +106,104 @@ backend/
   maintenanceInterval: Number,
   lastMaintenance: Date,
   nextMaintenance: Date,
-  notes: String
-}
-```
-
-**Log Model**
-```javascript
-{
-  user: ObjectId,
-  action: String,
-  target: String,
-  timestamp: Date,
-  details: String,
-  category: String
+  notes: String,
+  createdAt: Date,
+  updatedAt: Date
 }
 ```
 
 **Notification Model**
 ```javascript
 {
-  user: ObjectId,
-  type: String,
+  user: ObjectId,         // Reference to User
+  type: String,          // 'asset', 'maintenance', 'license', 'warranty'
   message: String,
   read: Boolean,
+  metadata: Object,      // Additional context
   createdAt: Date
+}
+```
+
+**Log Model**
+```javascript
+{
+  user: ObjectId,        // Reference to User
+  action: String,
+  category: String,
+  target: ObjectId,      // Reference to affected entity
+  details: String,
+  timestamp: Date
 }
 ```
 
 ## Infrastructure Architecture
 
-### Docker Container Structure
+### Container Architecture
 ```
 Infrastructure/
-├── MongoDB Container
-│   └── Persistent Volume: mongodb_data
-├── Backend Container
-│   ├── Node.js Runtime
-│   ├── Application Code
-│   └── Logs Volume
-└── Frontend Container
-    ├── Node.js Runtime
-    └── Vite Dev Server
+├── Frontend Container (Port 5173)
+│   └── Vite Development Server
+├── Backend Container (Port 5001)
+│   └── Node.js Application
+└── MongoDB Container (Port 27017)
+    └── Persistent Volume
 ```
 
-### Network Architecture
-- Frontend Container (Port 5173)
-- Backend Container (Port 5001)
-- MongoDB Container (Port 27017)
-- Internal Docker Network for container communication
-
-### Security Architecture
+### Security Implementation
 
 #### Authentication Flow
 1. User submits credentials
 2. Backend validates and generates JWT
-3. Frontend stores JWT in localStorage
-4. JWT included in Authorization header for subsequent requests
-5. Backend middleware validates JWT for protected routes
+3. Token stored in localStorage
+4. Token included in Authorization header
+5. Middleware validates protected routes
 
-#### Password Recovery Flow
-1. User requests password reset
-2. System generates unique token
-3. Token sent via email
-4. User submits new password with token
-5. System validates token and updates password
+#### Access Control
+- Role-based permissions (Admin/User)
+- Resource-level access control
+- API route protection
+- Asset assignment validation
 
 ### Logging Architecture
 
-#### Frontend Logging
-- Console logging for development
-- API request/response logging
-- Error tracking
-- User interaction logging
+#### Application Logging
+- Winston logger implementation
+- Structured log format
+- Multiple log levels
+- File and console transports
+- Log rotation configuration
 
-#### Backend Logging
-- Winston logger configuration
-- Console transport for development
-- File transport for production
-- Log levels: error, warn, info, debug
-- Request logging middleware
-- Error handling middleware
+#### Activity Tracking
+- User actions logging
+- Asset state changes
+- Authentication events
+- System operations
 
-### Monitoring and Metrics
+### Notification System
 
-#### Performance Monitoring
-- API response times
-- Database query performance
-- Frontend load times
-- Error rates and types
+#### Real-time Notifications
+- In-app notifications via UI
+- Email notifications for critical events
+- Automated maintenance reminders
+- Asset status change alerts
 
-#### System Health Checks
-- Database connectivity
-- API endpoint availability
-- Email service status
-- Storage usage monitoring
+#### Notification Types
+- Maintenance schedules
+- Warranty expirations
+- License renewals
+- Asset assignments
 
-## Deployment Architecture
+## Development & Deployment
 
 ### Development Environment
-- Local development with hot reloading
+- Hot module replacement
+- Environment-specific configs
+- Development debugging tools
 - Local MongoDB instance
-- Environment-specific configuration
-- Debug logging enabled
 
-### Production Environment
-- Containerized deployment
-- Production MongoDB instance
-- Environment variables for configuration
-- Log rotation and archiving
-- Health monitoring
-- Backup scheduling
-
-### Deployment Process
-1. Build Docker images
-2. Push to container registry
-3. Pull images on target environment
-4. Start containers with docker-compose
-5. Verify health checks
-6. Monitor logs and metrics
-
-## Maintenance Procedures
-
-### Backup Strategy
-- Daily MongoDB backups
-- Log file archiving
-- Container image versioning
-- Configuration backup
-
-### Update Procedures
-1. Database schema migrations
-2. Dependency updates
-3. Security patches
-4. Feature deployments
-5. Rollback procedures
-
-### Monitoring Strategy
-1. System metrics collection
-2. Error tracking and alerting
-3. Performance monitoring
-4. Security audit logging
-5. User activity tracking
+### Production Deployment
+- Docker container orchestration
+- Environment variable management
+- Database initialization
+- Health monitoring setup
+- Backup procedures

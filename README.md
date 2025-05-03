@@ -4,14 +4,37 @@ A comprehensive solution for managing organizational assets with features for tr
 
 ## Features
 
-- Asset lifecycle management
-- QR code generation and scanning
-- Role-based access control
-- Maintenance scheduling
-- License and warranty tracking
-- Real-time notifications
-- Activity logging
+### Asset Management
+- Full asset lifecycle management from acquisition to retirement
+- QR code generation and scanning for easy asset identification
+- Real-time asset status tracking and location management
+- Maintenance scheduling and automated reminders
+- License and warranty expiration tracking
+- Detailed asset history and audit logs
+- Customizable asset categories and fields
+
+### User Management
+- Role-based access control (Admin, Regular User)
+- Secure authentication with JWT
+- Password recovery system with email verification
+- User activity logging and audit trails
+
+### Notifications & Alerts
+- Real-time notification system with bell icon interface
+- Color-coded notifications based on priority
+- Email notifications for critical events
+- Automated alerts for:
+  - Maintenance schedules
+  - License expirations
+  - Warranty expirations
+  - Asset assignments/unassignments
+
+### Reporting
 - PDF/Excel report generation
+- Asset status reports
+- Maintenance history reports
+- User activity reports
+- Asset utilization analytics
 
 ## Quick Start
 
@@ -48,7 +71,7 @@ cd backend
 npm install
 ```
 
-3. Create and configure `.env` file
+3. Create and configure `.env` file as shown above
 
 4. Start the server:
 ```bash
@@ -92,6 +115,7 @@ The project includes:
 - ESLint configuration
 - Prettier formatting
 - Development debugging configuration
+- Winston logging system
 
 ### Testing
 Run frontend tests:
