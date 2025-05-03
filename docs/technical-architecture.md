@@ -43,6 +43,40 @@ frontend/
   - `RecoverPassword.jsx`: Password recovery flow
   - `ResetPassword.jsx`: Password reset interface
 
+#### UI Components Styling
+
+**Login Component**
+- Modern card-based layout with Apple-inspired design
+- Responsive container with centered alignment
+- Interactive form elements with smooth transitions
+- Visual feedback for form interactions:
+  - Input focus states with subtle shadows
+  - Hover effects on interactive elements
+  - Animated error and success messages
+- Accessibility considerations:
+  - High contrast text
+  - Proper input padding
+  - Clear visual hierarchy
+- Animation Effects:
+  - Smooth fade-in transitions for messages
+  - Subtle transform animations on buttons
+  - Error and success message animations
+
+#### Animation Implementation
+```css
+/* Example of implemented animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+```
+
 ### Backend Architecture
 
 The backend uses Node.js with Express, implementing a RESTful API architecture.
