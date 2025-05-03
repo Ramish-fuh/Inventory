@@ -6,6 +6,7 @@ import styles from './Navigation.module.css';
 import { jwtDecode } from 'jwt-decode';
 import LogoutButton from './LogoutButton';
 import NotificationBell from './NotificationBell';
+import ErrorBoundary from './ErrorBoundary';
 
 function Navigation() {
   const location = useLocation();
@@ -38,7 +39,20 @@ function Navigation() {
             >
               User Management
             </Link>
+            <Link 
+              to="/logs" 
+              className={`${styles.navLink} ${location.pathname === '/logs' ? styles.active : ''}`}
+            >
+              System Logs
+            </Link>
           </>
+        ) : userRole === 'Technician' ? (
+          <Link 
+            to="/technician-dashboard" 
+            className={`${styles.navLink} ${location.pathname === '/technician-dashboard' ? styles.active : ''}`}
+          >
+            Dashboard
+          </Link>
         ) : (
           <Link 
             to="/user-dashboard" 
@@ -47,9 +61,17 @@ function Navigation() {
             Dashboard
           </Link>
         )}
+        <Link 
+          to="/scan" 
+          className={`${styles.navLink} ${location.pathname === '/scan' ? styles.active : ''}`}
+        >
+          QR Scanner
+        </Link>
       </div>
       <div className={styles.rightControls}>
-        {userRole === 'Admin' && <NotificationBell />}
+        <ErrorBoundary fallback="Unable to load notifications">
+          <NotificationBell />
+        </ErrorBoundary>
         <Link to="/scan" className={styles.scanButton}>
           <Button
             variant="contained"

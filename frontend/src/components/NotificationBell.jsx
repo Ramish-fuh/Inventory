@@ -6,33 +6,41 @@ import {
   MenuItem, 
   ListItemText,
   Typography,
-  Divider
+  Divider,
+  Tooltip,
+  Button,
+  Box
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import BuildIcon from '@mui/icons-material/Build';
 import KeyIcon from '@mui/icons-material/Key';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import apiClient from '../index';
+import styles from './Navigation.module.css';
 
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [error, setError] = useState(null);
+  const [showReadNotifications, setShowReadNotifications] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
-    // Poll for new notifications every minute
-    const interval = setInterval(fetchNotifications, 60000);
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
     try {
+      setError(null);
       const response = await apiClient.get('/api/notifications');
-      setNotifications(response.data);
+      setNotifications(response.data || []);
       setUnreadCount(response.data.filter(n => !n.read).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      setError('Unable to load notifications');
     }
   };
 
@@ -48,12 +56,15 @@ const NotificationBell = () => {
     if (!notification.read) {
       try {
         await apiClient.put(`/api/notifications/${notification._id}`);
-        fetchNotifications();
+        // Update the notification in the local state
+        setNotifications(notifications.map(n => 
+          n._id === notification._id ? { ...n, read: true } : n
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
       } catch (error) {
         console.error('Error marking notification as read:', error);
       }
     }
-    handleClose();
   };
 
   const getNotificationStyle = (type, message) => {
@@ -87,9 +98,118 @@ const NotificationBell = () => {
     return { color, Icon };
   };
 
+  const toggleReadNotifications = () => {
+    setShowReadNotifications(!showReadNotifications);
+  };
+
+  if (error) {
+    return (
+      <Tooltip title={error}>
+        <IconButton color="inherit">
+          <NotificationsIcon />
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
+  const filteredNotifications = showReadNotifications 
+    ? notifications 
+    : notifications.filter(n => !n.read);
+
+  const renderMenuItems = () => {
+    if (notifications.length === 0) {
+      return [
+        <MenuItem key="no-notifications">
+          <ListItemText primary="No notifications" />
+        </MenuItem>
+      ];
+    }
+
+    const items = [
+      <MenuItem key="toggle-button">
+        <Button 
+          onClick={toggleReadNotifications}
+          fullWidth
+          size="small"
+        >
+          {showReadNotifications ? 'Show Unread Only' : 'Show All Notifications'}
+        </Button>
+      </MenuItem>,
+      <Divider key="top-divider" />
+    ];
+
+    if (filteredNotifications.length === 0) {
+      items.push(
+        <MenuItem key="no-filtered-notifications">
+          <ListItemText primary={showReadNotifications ? 'No notifications' : 'No unread notifications'} />
+        </MenuItem>
+      );
+    } else {
+      filteredNotifications.forEach((notification, index) => {
+        const { color, Icon } = getNotificationStyle(notification.type, notification.message);
+        items.push(
+          <MenuItem 
+            key={notification._id}
+            onClick={() => handleNotificationClick(notification)}
+            style={{ 
+              backgroundColor: notification.read ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+              padding: '12px 16px',
+              whiteSpace: 'normal',
+              minHeight: 'auto'
+            }}
+          >
+            <Box display="flex" width="100%">
+              <Box flexShrink={0} marginRight="12px" display="flex" alignItems="flex-start">
+                <Icon style={{ color, marginTop: '4px' }} />
+              </Box>
+              <Box flex={1}>
+                <ListItemText
+                  primary={
+                    <Typography 
+                      variant="subtitle2" 
+                      style={{ 
+                        color,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {notification.message}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography 
+                      variant="caption" 
+                      style={{ 
+                        display: 'block',
+                        marginTop: '4px'
+                      }}
+                    >
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </Typography>
+                  }
+                  style={{ margin: 0 }}
+                />
+              </Box>
+            </Box>
+          </MenuItem>
+        );
+
+        if (index < filteredNotifications.length - 1) {
+          items.push(<Divider key={`divider-${notification._id}`} />);
+        }
+      });
+    }
+
+    return items;
+  };
+
   return (
     <>
-      <IconButton color="inherit" onClick={handleClick}>
+      <IconButton
+        color="inherit"
+        onClick={handleClick}
+        className={styles.notificationBell}
+      >
         <Badge badgeContent={unreadCount} color="error">
           <NotificationsIcon />
         </Badge>
@@ -100,45 +220,21 @@ const NotificationBell = () => {
         onClose={handleClose}
         PaperProps={{
           style: {
-            maxHeight: '400px',
-            width: '350px',
+            maxHeight: '80vh',
+            width: '400px',
+            overflowX: 'hidden'
           },
         }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
       >
-        {notifications.length === 0 ? (
-          <MenuItem>
-            <ListItemText primary="No notifications" />
-          </MenuItem>
-        ) : (
-          notifications.map((notification, index) => {
-            const { color, Icon } = getNotificationStyle(notification.type, notification.message);
-            return (
-              <React.Fragment key={notification._id}>
-                <MenuItem 
-                  onClick={() => handleNotificationClick(notification)}
-                  style={{ 
-                    backgroundColor: notification.read ? 'inherit' : 'rgba(0, 0, 0, 0.04)',
-                    padding: '12px 16px'
-                  }}
-                >
-                  <Icon style={{ marginRight: '12px', color }} />
-                  <ListItemText
-                    primary={
-                      <Typography 
-                        variant="subtitle2" 
-                        style={{ color }}
-                      >
-                        {notification.message}
-                      </Typography>
-                    }
-                    secondary={new Date(notification.createdAt).toLocaleString()}
-                  />
-                </MenuItem>
-                {index < notifications.length - 1 && <Divider />}
-              </React.Fragment>
-            );
-          })
-        )}
+        {renderMenuItems()}
       </Menu>
     </>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import apiClient from '../index';
 import styles from './Login.module.css';
 
 // Replace `jwtDecode` with a custom function to decode JWT tokens
@@ -27,6 +27,7 @@ function Login() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -39,22 +40,61 @@ function Login() {
     e.preventDefault();
     setError('');
     setMessage('');
+    
     try {
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
+      // Clear any existing tokens first
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+
+      const response = await apiClient.post('/api/auth/login', {
         username,
         password,
       });
 
-      const token = response.data.token;
-      localStorage.setItem('token', token);
+      const { token, user } = response.data;
       
-      const decoded = token ? decodeJWT(token) : null;
-      const userRole = decoded.role;
-      localStorage.setItem('userRole', userRole);
+      // Validate token exists and can be decoded
+      if (!token) {
+        throw new Error('No token received');
+      }
 
-      window.location.href = userRole === 'Admin' ? '/admin-dashboard' : '/user-dashboard';
+      // Decode and validate token
+      const decoded = decodeJWT(token);
+      if (!decoded || !decoded.id || !decoded.role || !decoded.exp) {
+        throw new Error('Invalid token format');
+      }
+
+      // Validate token expiration
+      const expirationTime = decoded.exp * 1000; // Convert to milliseconds
+      if (expirationTime <= Date.now()) {
+        throw new Error('Token is already expired');
+      }
+
+      // Store auth data only after all validation passes
+      localStorage.setItem('token', token);
+      localStorage.setItem('userRole', decoded.role);
+      localStorage.setItem('userId', decoded.id);
+
+      // Navigate based on role
+      switch (decoded.role) {
+        case 'Admin':
+          navigate('/admin-dashboard', { replace: true });
+          break;
+        case 'Technician':
+          navigate('/technician-dashboard', { replace: true });
+          break;
+        default:
+          navigate('/user-dashboard', { replace: true });
+      }
     } catch (error) {
-      setError('Invalid credentials. Please try again.');
+      console.error('Login error:', error);
+      setError(error.response?.data?.message || 'Login failed. Please try again.');
+      
+      // Clear any partial auth data on error
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
     }
   };
 

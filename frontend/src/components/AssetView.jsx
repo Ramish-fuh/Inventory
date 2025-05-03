@@ -12,6 +12,10 @@ function AssetView() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const userRole = localStorage.getItem('userRole');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (!id) {
@@ -54,18 +58,40 @@ function AssetView() {
     }
   };
 
-  const renderEditButton = () => {
-    if (userRole === 'Admin') {
-      return (
-        <button 
-          onClick={() => setIsEditing(true)}
-          className={styles.editButton}
-        >
-          Edit Asset
-        </button>
-      );
+  const renderActionButtons = () => {
+    return (
+      <div className={styles.actionButtons}>
+        {(userRole === 'Admin' || userRole === 'Technician') && (
+          <button 
+            onClick={() => setIsEditing(true)}
+            className={styles.editButton}
+          >
+            Edit Asset
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const fetchAssets = async (page = currentPage) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/assets?page=${page}&limit=${itemsPerPage}`);
+      const data = await response.json();
+      setAssets(data.assets);
+      setTotalPages(data.totalPages);
+      setCurrentPage(data.currentPage);
+      setTotalItems(data.totalItems);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-    return null;
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchAssets(page);
   };
 
   if (loading) {
@@ -86,7 +112,7 @@ function AssetView() {
         <div className={styles.headerContent}>
           <h1>{asset.name}</h1>
           <p className={styles.subtitle}>Asset Details</p>
-          {renderEditButton()}
+          {renderActionButtons()}
         </div>
       </header>
 
@@ -119,7 +145,7 @@ function AssetView() {
                 {asset.assignedTo && (
                   <div className={styles.detailItem}>
                     <h3>Assigned To</h3>
-                    <p>{asset.assignedTo}</p>
+                    <p>{asset.assignedTo.fullName || asset.assignedTo.username}</p>
                   </div>
                 )}
                 {asset.location && (
@@ -140,6 +166,23 @@ function AssetView() {
           </div>
         )}
       </main>
+
+      <div className="pagination">
+        <button 
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </button>
+        <span>Page {currentPage} of {totalPages}</span>
+        <button 
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </button>
+        <span>Total items: {totalItems}</span>
+      </div>
     </div>
   );
 }

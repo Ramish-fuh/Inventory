@@ -1,11 +1,14 @@
 import express from 'express';
-import { getUsers, getUserById, createUser, updateUser, deleteUser } from '../controllers/userController.js';
+import { getUsers, getUserById, createUser, updateUser, deleteUser, searchUsers } from '../controllers/userController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Protect all routes
 router.use(authMiddleware);
+
+// Search users - Admin only
+router.get('/search', searchUsers);
 
 // Get all users - Admin only
 router.get('/', getUsers);

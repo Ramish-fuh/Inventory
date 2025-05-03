@@ -1,28 +1,22 @@
-
 import express from 'express';
-import {
-  getLogs,
-  getLogById,
-  createLog,
-  updateLog,
-  deleteLog
-} from '../controllers/logController.js';
+import { getLogs, getSystemLogs, getMetrics, exportLogs } from '../controllers/logController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// GET /api/logs
-router.get('/', getLogs);
+// Require admin role for all log routes
+router.use(authMiddleware);
 
-// GET /api/logs/:id
-router.get('/:id', getLogById);
+// Get activity logs with filtering
+router.get('/activity', getLogs);
 
-// POST /api/logs
-router.post('/', createLog);
+// Get system logs with filtering
+router.get('/system', getSystemLogs);
 
-// PUT /api/logs/:id
-router.put('/:id', updateLog);
+// Get performance metrics
+router.get('/metrics', getMetrics);
 
-// DELETE /api/logs/:id
-router.delete('/:id', deleteLog);
+// Export logs
+router.get('/export', exportLogs);
 
 export default router;

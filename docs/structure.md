@@ -102,4 +102,167 @@ This project aims to design and implement a lightweight, scalable IT Asset Manag
 ---
 
 ## 👤 Author
-Ramish Shu  
+Ramish Shu
+
+---
+
+# Project Structure Documentation
+
+## Directory Organization
+
+```
+Inventory/
+├── backend/                  # Backend Node.js application
+│   ├── Dockerfile           # Backend container configuration
+│   ├── logs/               # Application logs directory
+│   │   └── app.log        # Main log file
+│   └── src/               # Source code
+│       ├── config/        # Configuration files
+│       ├── controllers/   # Request handlers
+│       ├── models/       # Database models
+│       ├── routes/       # API routes
+│       ├── middleware/   # Custom middleware
+│       ├── utils/        # Utility functions
+│       └── services/     # Business logic
+│
+├── frontend/               # Frontend React application
+│   ├── Dockerfile         # Frontend container configuration
+│   ├── public/           # Static files
+│   └── src/             # Source code
+│       ├── components/  # React components
+│       ├── assets/     # Static assets
+│       └── styles/     # CSS modules and styles
+│
+├── docs/                  # Project documentation
+│   ├── README.md         # Main documentation
+│   ├── structure.md      # Project structure guide
+│   └── technical-architecture.md  # Technical details
+│
+└── docker-compose.yml     # Container orchestration
+```
+
+## Component Relationships
+
+### Backend Components
+
+#### Config Layer
+- `db.js`: Database configuration and connection
+- Environment variables management
+
+#### Controller Layer
+- `assetController.js`: Asset management logic
+- `authController.js`: Authentication handling
+- `logController.js`: Activity logging
+- `notificationController.js`: Notification management
+- `userController.js`: User management
+
+#### Model Layer
+- `Asset.js`: Asset data model
+- `Log.js`: Activity log model
+- `Notification.js`: Notification model
+- `User.js`: User account model
+
+#### Middleware Layer
+- `assetAccessControl.js`: Role-based asset access control
+- `authMiddleware.js`: Authentication validation
+- `loggingMiddleware.js`: Request logging
+- `performanceLogging.js`: Performance monitoring
+- `setupRateLimiter.js`: Rate limiting protection
+
+#### Helper Layer
+- `mailer.js`: Email functionality
+- `notificationHelper.js`: Notification utilities
+
+#### Service Layer
+- `notificationScheduler.js`: Automated notifications
+- `genQr.js`: QR code generation
+- `reportGenerator.js`: PDF/Excel exports
+
+### Frontend Components
+
+#### Core Components
+- `App.jsx`: Main application component
+- `index.js`: Entry point
+- `main.jsx`: React initialization
+
+#### Role-Based Components
+- `AdminDashboard.jsx`: Administrator interface
+- `TechnicianDashboard.jsx`: Technician interface
+- `UserDashboard.jsx`: Regular user interface
+
+#### Feature Components
+- **Asset Management**
+  - `AddAssetModal.jsx`: Asset creation (admin only)
+  - `EditAssetForm.jsx`: Asset editing (admin/technician)
+  - `AssetView.jsx`: Asset details view
+
+- **Authentication**
+  - `Login.jsx`: User login
+  - `RecoverPassword.jsx`: Password recovery
+  - `ResetPassword.jsx`: Password reset
+
+- **User Management**
+  - `UserManagement.jsx`: User administration (admin only)
+
+- **Utility Components**
+  - `Navigation.jsx`: Role-based navigation bar
+  - `NotificationBell.jsx`: Notification display
+  - `QRScanner.jsx`: QR code scanning
+  - `LogoutButton.jsx`: Session management
+
+#### Styling
+- CSS Modules for component-specific styles
+- Material-UI theming
+- Responsive design implementations
+
+## File Naming Conventions
+
+### Backend
+- Controllers: `*Controller.js`
+- Models: PascalCase.js
+- Routes: `*Routes.js`
+- Utilities: camelCase.js
+
+### Frontend
+- Components: PascalCase.jsx
+- Styles: ComponentName.module.css
+- Utilities: camelCase.js
+
+## Code Organization Standards
+
+### Backend Standards
+1. Route definitions separate from controllers
+2. Model validation in schema definitions
+3. Business logic in service layer
+4. Error handling middleware
+5. Centralized logging configuration
+6. Role-based access control middleware
+
+### Frontend Standards
+1. Component-based architecture
+2. CSS Modules for styling
+3. Props validation
+4. Error boundary implementation
+5. Context for state management
+6. Role-based routing and components
+
+## Development Workflow
+
+### Local Development
+1. Backend server with hot reload
+2. Frontend development server
+3. Local MongoDB instance
+4. Environment-specific configuration
+
+### Docker Development
+1. Containerized services
+2. Volume mounts for development
+3. Hot reload enabled
+4. Connected container network
+
+### Production Deployment
+1. Optimized builds
+2. Environment variables
+3. Production logging
+4. Health monitoring
+5. Backup procedures

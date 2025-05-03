@@ -20,8 +20,7 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
     name: '',
     assetTag: '',
     category: '',
-    status: '',
-    assignedTo: '',
+    status: 'Available', // Default to Available since we can't assign during creation
     location: '',
     notes: '',
     serialNumber: '',
@@ -38,13 +37,60 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.assetTag) newErrors.assetTag = 'Asset tag is required';
-    if (!formData.category) newErrors.category = 'Category is required';
-    if (!formData.status) newErrors.status = 'Status is required';
     
-    if (formData.maintenanceInterval && isNaN(formData.maintenanceInterval)) {
-      newErrors.maintenanceInterval = 'Must be a number';
+    // Required field validations
+    if (!formData.name?.trim()) newErrors.name = 'Name is required';
+    if (!formData.assetTag?.trim()) newErrors.assetTag = 'Asset tag is required';
+    if (!formData.category) newErrors.category = 'Category is required';
+    if (!formData.location?.trim()) newErrors.location = 'Location is required';
+
+    // Date validations
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const validateDate = (dateStr) => {
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      return !isNaN(date.getTime()) ? date : null;
+    };
+
+    const purchaseDate = validateDate(formData.purchaseDate);
+    const warrantyExpiry = validateDate(formData.warrantyExpiry);
+    const licenseExpiry = validateDate(formData.licenseExpiry);
+    const lastMaintenance = validateDate(formData.lastMaintenance);
+    const nextMaintenance = validateDate(formData.nextMaintenance);
+
+    // Purchase date cannot be in the future
+    if (purchaseDate && purchaseDate > today) {
+      newErrors.purchaseDate = 'Purchase date cannot be in the future';
+    }
+
+    // Warranty expiry must be after purchase date
+    if (warrantyExpiry && purchaseDate && warrantyExpiry < purchaseDate) {
+      newErrors.warrantyExpiry = 'Warranty expiry must be after purchase date';
+    }
+
+    // License expiry validation
+    if (licenseExpiry && purchaseDate && licenseExpiry < purchaseDate) {
+      newErrors.licenseExpiry = 'License expiry must be after purchase date';
+    }
+
+    // Last maintenance cannot be in the future
+    if (lastMaintenance && lastMaintenance > today) {
+      newErrors.lastMaintenance = 'Last maintenance date cannot be in the future';
+    }
+
+    // Next maintenance must be in the future
+    if (nextMaintenance && nextMaintenance < today) {
+      newErrors.nextMaintenance = 'Next maintenance date must be in the future';
+    }
+
+    // Maintenance interval validation
+    if (formData.maintenanceInterval) {
+      const interval = Number(formData.maintenanceInterval);
+      if (isNaN(interval) || interval <= 0 || !Number.isInteger(interval)) {
+        newErrors.maintenanceInterval = 'Maintenance interval must be a positive whole number';
+      }
     }
 
     setErrors(newErrors);
@@ -57,6 +103,7 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
       ...prev,
       [name]: value
     }));
+
     // Clear error when field is edited
     if (errors[name]) {
       setErrors(prev => ({
@@ -66,12 +113,53 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
     }
   };
 
+  const prepareDataForSubmission = () => {
+    const data = { ...formData };
+    
+    // Handle date fields
+    const dateFields = ['purchaseDate', 'warrantyExpiry', 'licenseExpiry', 'nextMaintenance', 'lastMaintenance'];
+    dateFields.forEach(field => {
+      if (data[field]) {
+        // Ensure date is in ISO format for MongoDB
+        const date = new Date(data[field]);
+        if (!isNaN(date.getTime())) {
+          data[field] = date.toISOString();
+        } else {
+          data[field] = null;
+        }
+      } else {
+        data[field] = null;
+      }
+    });
+
+    // Convert maintenanceInterval to number or null
+    if (data.maintenanceInterval === '') {
+      data.maintenanceInterval = null;
+    } else if (data.maintenanceInterval) {
+      data.maintenanceInterval = Number(data.maintenanceInterval);
+    }
+
+    // Convert empty strings to null for optional fields
+    ['notes', 'serialNumber'].forEach(field => {
+      if (data[field] === '') {
+        data[field] = null;
+      }
+    });
+
+    return data;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Clear previous submission error
+    setErrors(prev => ({ ...prev, submit: undefined }));
+    
     if (!validateForm()) return;
 
     try {
-      const response = await apiClient.post('/api/assets', formData);
+      const dataToSubmit = prepareDataForSubmission();
+      const response = await apiClient.post('/api/assets', dataToSubmit);
       onAssetAdded(response.data);
       setFormData(initialFormData);
       onClose();
@@ -141,16 +229,13 @@ const AddAssetModal = ({ open, onClose, onAssetAdded }) => {
               <InputLabel>Status</InputLabel>
               <Select
                 name="status"
-                value={formData.status}
-                onChange={handleChange}
+                value="Available"
+                disabled
                 label="Status"
               >
                 <MenuItem value="Available">Available</MenuItem>
-                <MenuItem value="In Use">In Use</MenuItem>
-                <MenuItem value="Under Maintenance">Under Maintenance</MenuItem>
-                <MenuItem value="Retired">Retired</MenuItem>
               </Select>
-              {errors.status && <FormHelperText>{errors.status}</FormHelperText>}
+              <FormHelperText>Assets are created as Available and can be assigned later by an admin</FormHelperText>
             </FormControl>
 
             <TextField
