@@ -55,7 +55,7 @@ function AssetView() {
   };
 
   const renderEditButton = () => {
-    if (userRole === 'Admin') {
+    if (userRole === 'Admin' || userRole === 'Technician') {
       return (
         <button 
           onClick={() => setIsEditing(true)}

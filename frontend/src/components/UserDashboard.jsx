@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
+import EditIcon from '@mui/icons-material/Edit';
 import apiClient from '../index';
 import styles from './Dashboard.module.css';
 
@@ -13,6 +15,8 @@ function UserDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  const userRole = localStorage.getItem('userRole');
+  const canEdit = userRole === 'Technician';
 
   useEffect(() => {
     apiClient.get('/api/assets')
@@ -71,6 +75,97 @@ function UserDashboard() {
     setDisplayedAssets(filtered);
   }, [searchQuery, sortBy, sortOrder, assets]);
 
+  const generateQR = async (assetId) => {
+    try {
+      if (!assetId) {
+        console.error('Invalid asset ID:', assetId);
+        alert('Invalid asset ID. Please try again.');
+        return;
+      }
+
+      const response = await apiClient.get(`/api/qr/${assetId}`);
+      const qrWindow = window.open('', '_blank');
+      qrWindow.document.write(`
+        <html>
+          <head>
+            <title>Asset QR Code</title>
+            <style>
+              body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                background-color: #f5f5f7;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+              }
+              .container {
+                text-align: center;
+                background: white;
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              }
+              img {
+                max-width: 300px;
+                margin-bottom: 1rem;
+              }
+              .url {
+                color: #666;
+                margin-top: 1rem;
+                word-break: break-all;
+              }
+              button {
+                margin-top: 1rem;
+                padding: 0.5rem 1rem;
+                background: #0066cc;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              }
+              button:hover {
+                opacity: 0.9;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="${response.data.qrCode}" alt="QR Code" />
+              <div class="url">${response.data.url}</div>
+              <button onclick="window.print()">Print QR Code</button>
+            </div>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+      }
+    }
+  };
+
+  const renderActionButtons = (asset) => (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+      <Tooltip title="Generate QR Code">
+        <IconButton onClick={() => generateQR(asset._id)}>
+          <QrCode2Icon />
+        </IconButton>
+      </Tooltip>
+      
+      {canEdit && (
+        <Tooltip title="Edit Asset">
+          <IconButton onClick={() => navigate(`/assets/${asset._id}`)}>
+            <EditIcon />
+          </IconButton>
+        </Tooltip>
+      )}
+    </div>
+  );
+
   if (loading) {
     return <div className={styles.loading}>Loading...</div>;
   }
@@ -83,7 +178,7 @@ function UserDashboard() {
     <div className={styles.dashboardContainer}>
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <h1>User Dashboard</h1>
+          <h1>My Assets</h1>
           <p className={styles.subtitle}>View and manage your assigned assets</p>
         </div>
       </header>
@@ -91,8 +186,15 @@ function UserDashboard() {
       <main className={styles.mainContent}>
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
-            <h3>My Assets</h3>
+            <h3>Total Assigned Assets</h3>
             <p className={styles.statNumber}>{assets.length}</p>
+          </div>
+          
+          <div className={styles.statCard}>
+            <h3>Under Maintenance</h3>
+            <p className={styles.statNumber}>
+              {assets.filter(asset => asset.status === 'Under Maintenance').length}
+            </p>
           </div>
         </div>
 
@@ -154,6 +256,7 @@ function UserDashboard() {
                       Location: {asset.location}
                     </Typography>
                   )}
+                  {renderActionButtons(asset)}
                   <Link 
                     to={`/assets/${asset._id}`} 
                     className={styles.viewDetailsLink}

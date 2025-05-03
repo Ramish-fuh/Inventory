@@ -278,6 +278,36 @@ function AdminDashboard() {
     setExportType(null);
   };
 
+  const renderActionButtons = (asset) => {
+    const userRole = localStorage.getItem('userRole');
+
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+        <Tooltip title="Generate QR Code">
+          <IconButton onClick={() => handleGenerateQR(asset)}>
+            <QrCode2Icon />
+          </IconButton>
+        </Tooltip>
+        
+        {(userRole === 'Admin' || userRole === 'Technician') && (
+          <Tooltip title="Edit Asset">
+            <IconButton onClick={() => setEditingAsset(asset)}>
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+        
+        {userRole === 'Admin' && (
+          <Tooltip title="Delete Asset">
+            <IconButton onClick={() => handleDeleteClick(asset)}>
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return <div className={styles.loading}>Loading...</div>;
   }
@@ -426,23 +456,7 @@ function AdminDashboard() {
                     <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
                       Serial: {asset.serialNumber}
                     </Typography>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                      <Tooltip title="Generate QR Code">
-                        <IconButton onClick={() => handleGenerateQR(asset)}>
-                          <QrCode2Icon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Asset">
-                        <IconButton onClick={() => setEditingAsset(asset)}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete Asset">
-                        <IconButton onClick={() => handleDeleteClick(asset)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </div>
+                    {renderActionButtons(asset)}
                     <Link
                       to={`/assets/${asset._id}`}
                       className={styles.viewDetailsLink}

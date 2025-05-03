@@ -8,8 +8,12 @@ import {
   exportToPDF,
   exportToExcel 
 } from '../controllers/assetController.js';
+import { assetAccessControl } from '../middleware/assetAccessControl.js';
 
 const router = express.Router();
+
+// Apply asset access control to all routes
+router.use(assetAccessControl);
 
 // GET all assets
 router.get('/', getAssets);
