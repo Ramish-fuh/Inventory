@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import apiClient from '../index';
 import styles from './Login.module.css';
 
 // Replace `jwtDecode` with a custom function to decode JWT tokens
@@ -27,6 +27,7 @@ function Login() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -40,21 +41,30 @@ function Login() {
     setError('');
     setMessage('');
     try {
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
+      const response = await apiClient.post('/api/auth/login', {
         username,
         password,
       });
 
       const token = response.data.token;
+      if (!token) {
+        throw new Error('No token received');
+      }
+
       localStorage.setItem('token', token);
       
-      const decoded = token ? decodeJWT(token) : null;
-      const userRole = decoded.role;
-      localStorage.setItem('userRole', userRole);
+      const decoded = decodeJWT(token);
+      if (!decoded || !decoded.role) {
+        throw new Error('Invalid token format');
+      }
 
-      window.location.href = userRole === 'Admin' ? '/admin-dashboard' : '/user-dashboard';
+      localStorage.setItem('userRole', decoded.role);
+      
+      // Use React Router navigation instead of window.location
+      navigate(decoded.role === 'Admin' ? '/admin-dashboard' : '/user-dashboard');
     } catch (error) {
-      setError('Invalid credentials. Please try again.');
+      console.error('Login error:', error);
+      setError(error.response?.data?.message || 'Invalid credentials. Please try again.');
     }
   };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AdminDashboard from './components/AdminDashboard';
 import UserDashboard from './components/UserDashboard';
 import AssetView from './components/AssetView';
@@ -53,7 +53,7 @@ function App() {
           {/* Protect user-dashboard with PrivateRoute */}
           <Route
             path="/user-dashboard"
-            element={<PrivateRoute element={<UserDashboard />} role="user" />}
+            element={<PrivateRoute element={<UserDashboard />} role="User" />}
           />
 
           {/* Protected Asset View Route */}
@@ -62,11 +62,21 @@ function App() {
             element={<PrivateRoute element={<AssetView />} role={userRole} />}
           />
 
-          {/* Default route */}
-          <Route path="/" element={<div>Please log in</div>} />
+          {/* Default route - redirect to appropriate dashboard based on role */}
+          <Route 
+            path="/" 
+            element={
+              decoded ? 
+                (decoded.role.toLowerCase() === 'admin' ? 
+                  <Navigate to="/admin-dashboard" /> : 
+                  <Navigate to="/user-dashboard" />
+                ) : 
+                <Navigate to="/login" />
+            } 
+          />
 
           {/* Add a fallback route to handle unmatched locations */}
-          <Route path="*" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </div>
     </Router>
