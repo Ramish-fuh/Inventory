@@ -374,10 +374,18 @@ export const setupInitialAdmin = async (req, res) => {
             ip: req.ip
         });
 
+        // Send the auto-generated password to the admin's email
+        if (password !== req.body.password) {
+            await sendEmail({
+                to: admin.email,
+                subject: 'Your Admin Account Password',
+                text: `Your admin account has been created. Your username is "${admin.username}" and your password is "${password}". Please change your password after logging in.`
+            });
+        }
+
         return res.status(201).json({ 
-            message: 'Initial admin user created successfully',
-            username: admin.username,
-            password: password === req.body.password ? undefined : password // Only return if auto-generated
+            message: 'Initial admin user created successfully. The password has been sent to the registered email address.',
+            username: admin.username
         });
 
     } catch (error) {
