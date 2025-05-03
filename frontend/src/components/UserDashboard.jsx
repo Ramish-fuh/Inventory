@@ -16,38 +16,43 @@ function UserDashboard() {
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const userRole = localStorage.getItem('userRole');
+  const userId = localStorage.getItem('userId');
   const canEdit = userRole === 'Technician';
 
   useEffect(() => {
-    console.log('Making API request with token:', localStorage.getItem('token'));
-    apiClient.get('/api/assets')
-      .then(response => {
+    const fetchAssets = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (searchQuery) params.append('search', searchQuery);
+        // Ensure we only get assets assigned to the current user
+        params.append('assignedTo', userId);
+
+        const response = await apiClient.get(`/api/assets?${params.toString()}`);
         console.log('API Response:', response.data);
-        if (Array.isArray(response.data)) {
-          setAssets(response.data);
-          setDisplayedAssets(response.data);
-          console.log('Assets set:', response.data.length, 'items');
+        const assetData = response.data.assets || response.data;
+        if (Array.isArray(assetData)) {
+          setAssets(assetData);
+          setDisplayedAssets(assetData);
+          console.log('Assets set:', assetData.length, 'items');
         } else {
-          throw new Error('Invalid data format: Expected an array');
+          throw new Error('Invalid data format: Expected assets array');
         }
         setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching assets:', {
-          status: err.response?.status,
-          statusText: err.response?.statusText,
-          data: err.response?.data,
-          headers: err.response?.headers
-        });
+      } catch (err) {
+        console.error('Error fetching assets:', err);
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('userRole');
+          localStorage.removeItem('userId');
           navigate('/login');
         }
         setError('Failed to load assets. Please try again later.');
         setLoading(false);
-      });
-  }, [navigate]);
+      }
+    };
+
+    fetchAssets();
+  }, [navigate, searchQuery, userId]);
 
   // Handle search and sort whenever the criteria change
   useEffect(() => {

@@ -59,7 +59,8 @@ function Login() {
       }
 
       localStorage.setItem('userRole', decoded.role);
-      
+      localStorage.setItem('userId', decoded.id); // Store the user ID
+
       // Use React Router navigation instead of window.location
       navigate(decoded.role === 'Admin' ? '/admin-dashboard' : '/user-dashboard');
     } catch (error) {
