@@ -34,41 +34,41 @@ function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('assets');
 
   useEffect(() => {
-    apiClient.get('/api/assets')
-      .then(response => {
-        if (response.data && Array.isArray(response.data.assets)) {
-          setAssets(response.data.assets);
-          setDisplayedAssets(response.data.assets);
-        } else {
-          throw new Error('Invalid data format: Expected assets array in response');
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching assets:', err);
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('userRole');
-          navigate('/login');
-          return;
-        }
-        setError('Failed to load assets. Please try again later.');
-        setLoading(false);
-      });
-  }, [navigate]);
+    fetchAssets();
+  }, []);
 
   // Handle search and sort whenever the criteria change
   useEffect(() => {
+    if (!Array.isArray(assets)) return;
+    
     let filtered = [...assets];
 
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(asset =>
-        asset.name?.toLowerCase().includes(query) ||
-        asset.category?.toLowerCase().includes(query) ||
-        asset.assignedTo?.toLowerCase().includes(query) ||
-        asset.location?.toLowerCase().includes(query)
+        (asset.name || '').toLowerCase().includes(query) ||
+        (asset.category || '').toLowerCase().includes(query) ||
+        (asset.assignedTo?.toLowerCase() || '').includes(query) ||
+        (asset.location || '').toLowerCase().includes(query)
+      );
+    }
+
+    // Apply category filter
+    if (categoryFilter) {
+      filtered = filtered.filter(asset => asset.category === categoryFilter);
+    }
+
+    // Apply status filter
+    if (statusFilter) {
+      filtered = filtered.filter(asset => asset.status === statusFilter);
+    }
+
+    // Apply assigned to filter
+    if (assignedToFilter) {
+      filtered = filtered.filter(asset => 
+        asset.assignedTo?.fullName?.toLowerCase().includes(assignedToFilter.toLowerCase()) ||
+        asset.assignedTo?.username?.toLowerCase().includes(assignedToFilter.toLowerCase())
       );
     }
 
@@ -99,7 +99,7 @@ function AdminDashboard() {
     });
 
     setDisplayedAssets(filtered);
-  }, [searchQuery, sortBy, sortOrder, assets]);
+  }, [searchQuery, categoryFilter, statusFilter, assignedToFilter, sortBy, sortOrder, assets]);
 
   const fetchAssets = async () => {
     try {
@@ -110,7 +110,15 @@ function AdminDashboard() {
       if (assignedToFilter) params.append('assignedTo', assignedToFilter);
 
       const response = await apiClient.get(`/api/assets?${params.toString()}`);
-      setAssets(response.data);
+      
+      // Handle the paginated response correctly
+      if (response.data && Array.isArray(response.data.assets)) {
+        setAssets(response.data.assets);
+        setDisplayedAssets(response.data.assets);
+      } else {
+        throw new Error('Invalid data format: Expected assets array in response');
+      }
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching assets:', error);
       if (error.response?.status === 401) {
@@ -118,12 +126,10 @@ function AdminDashboard() {
         localStorage.removeItem('userRole');
         navigate('/login');
       }
+      setError('Failed to load assets. Please try again later.');
+      setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchAssets();
-  }, [searchQuery, categoryFilter, statusFilter, assignedToFilter]);
 
   const handleDelete = async (assetId) => {
     if (window.confirm('Are you sure you want to delete this asset?')) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Table,
@@ -50,7 +50,7 @@ const LogViewer = () => {
     pages: 0
   });
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams({
@@ -75,25 +75,25 @@ const LogViewer = () => {
       
       const data = await response.json();
       setLogs(data.logs);
-      setPagination({
-        ...pagination,
+      setPagination(prev => ({
+        ...prev,
         total: data.pagination.total,
         pages: data.pagination.pages
-      });
+      }));
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, pagination.page, pagination.pageSize, filters.startDate, filters.endDate, filters.level, filters.category, filters.action, filters.service]);
 
   useEffect(() => {
     fetchLogs();
-  }, [activeTab, pagination.page, pagination.pageSize, filters]);
+  }, [fetchLogs]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setPagination({ ...pagination, page: 1 });
+    setPagination(prev => ({ ...prev, page: 1 }));
     setFilters({
       startDate: null,
       endDate: null,
@@ -105,16 +105,16 @@ const LogViewer = () => {
   };
 
   const handlePageChange = (event, newPage) => {
-    setPagination({ ...pagination, page: newPage });
+    setPagination(prev => ({ ...prev, page: newPage }));
     window.scrollTo(0, 0);
   };
 
   const handlePageSizeChange = (event) => {
-    setPagination({
-      ...pagination,
+    setPagination(prev => ({
+      ...prev,
       pageSize: event.target.value,
       page: 1
-    });
+    }));
   };
 
   const getLevelIcon = (level) => {

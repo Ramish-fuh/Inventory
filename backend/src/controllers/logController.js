@@ -46,11 +46,19 @@ export const getLogs = async (req, res) => {
     if (action) query.action = action;
     if (user) query.user = user;
 
-    const logs = await Log.find(query)
+    // Only select fields that are displayed in the frontend
+    const logs = await Log.find(query, {
+      timestamp: 1,
+      category: 1,
+      action: 1,
+      details: 1,
+      user: 1
+    })
       .populate('user', 'username fullName')
       .sort({ timestamp: -1 })
       .skip(skip)
-      .limit(pageSize);
+      .limit(pageSize)
+      .lean(); // Convert to plain JS objects for better performance
 
     const total = await Log.countDocuments(query);
 
@@ -75,7 +83,6 @@ export const getLogs = async (req, res) => {
       stack: error.stack,
       requesterId: req.user._id
     });
-
     res.status(500).json({ message: 'Error fetching logs' });
   }
 };
@@ -153,11 +160,20 @@ export const getSystemLogs = async (req, res) => {
     if (level) query.level = level;
     if (service) query.service = service;
 
-    const logs = await SystemLog.find(query)
+    // Only select fields that are displayed in the frontend
+    const logs = await SystemLog.find(query, {
+      timestamp: 1,
+      level: 1,
+      service: 1,
+      message: 1,
+      details: 1,
+      user: 1
+    })
       .populate('user', 'username fullName')
       .sort({ timestamp: -1 })
       .skip(skip)
-      .limit(pageSize);
+      .limit(pageSize)
+      .lean(); // Convert to plain JS objects for better performance
 
     const total = await SystemLog.countDocuments(query);
 
