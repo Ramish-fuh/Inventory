@@ -18,116 +18,79 @@ export const loginUser = async (req, res) => {
         });
 
         if (!username || !password) {
+            logger.warn('Login failed - missing credentials', { username });
             return res.status(400).json({ message: 'Username and password are required' });
         }
 
         const user = await User.findOne({ username });
+        
         if (!user) {
-            logger.warn('Failed login attempt - user not found', {
-                username,
-                ip: req.ip
-            });
-
-            await SystemLog.create({
-                level: 'warn',
-                message: 'Failed login attempt - user not found',
-                service: 'auth-service',
-                metadata: {
-                    username,
-                    ip: req.ip,
-                    userAgent: req.headers['user-agent']
-                }
-            });
-
+            logger.warn('Login failed - user not found', { username });
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!isMatch) {
-            logger.warn('Failed login attempt - invalid password', {
-                username,
-                userId: user._id,
-                ip: req.ip
-            });
-
-            await SystemLog.create({
-                level: 'warn',
-                message: 'Failed login attempt - invalid password',
-                service: 'auth-service',
-                metadata: {
-                    username,
-                    userId: user._id,
-                    ip: req.ip,
-                    userAgent: req.headers['user-agent']
-                }
-            });
-
+        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+        
+        if (!isPasswordValid) {
+            logger.warn('Login failed - invalid password', { username });
             return res.status(401).json({ message: 'Invalid credentials' });
         }
-
-        const token = jwt.sign(
-            { id: user._id, role: user.role }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: '1h' }
-        );
 
         // Update last login timestamp
-        await user.updateLastLogin();
+        user.lastLogin = new Date();
+        await user.save();
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
 
         // Log successful login
         await Log.create({
             user: user._id,
-            action: 'User Login',
+            action: 'Login',
             category: 'Authentication',
-            details: `User ${username} logged in successfully`
+            details: 'User logged in successfully'
         });
 
-        await SystemLog.create({
-            level: 'info',
-            message: 'Successful login',
-            service: 'auth-service',
-            metadata: {
-                username,
-                userId: user._id,
-                ip: req.ip,
-                userAgent: req.headers['user-agent']
-            },
-            user: user._id
-        });
-
-        logger.info('User logged in successfully', {
+        logger.info('Login successful', {
             userId: user._id,
             username: user.username,
-            role: user.role,
-            ip: req.ip
+            role: user.role
         });
 
-        // Return the token with user role
-        res.json({ 
+        return res.json({
             token,
-            role: user.role 
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                fullName: user.fullName
+            }
         });
     } catch (error) {
         logger.error('Login error', {
             error: error.message,
             stack: error.stack,
-            username,
-            ip: req.ip
+            username
         });
 
         await SystemLog.create({
             level: 'error',
-            message: `Login error: ${error.message}`,
+            message: 'Login error',
             service: 'auth-service',
             metadata: {
+                error: error.message,
                 username,
-                ip: req.ip,
-                userAgent: req.headers['user-agent']
+                ip: req.ip
             },
             trace: error.stack
         });
 
-        res.status(500).json({ message: 'Server error' });
+        return res.status(500).json({ message: 'Server error during login' });
     }
 };
 
@@ -304,5 +267,53 @@ export const resetPassword = async (req, res) => {
         });
 
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+export const setupInitialAdmin = async (req, res) => {
+    logger.debug('Setup initial admin request received', {
+        path: req.path,
+        method: req.method,
+        body: req.body,
+        headers: req.headers
+    });
+
+    try {
+        const adminExists = await User.findOne({ role: 'Admin' });
+        if (adminExists) {
+            logger.debug('Admin user already exists', { adminId: adminExists._id });
+            return res.status(400).json({ message: 'Admin user already exists' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash('Admin123!', salt);
+        
+        const admin = new User({
+            username: 'admin',
+            email: 'admin@example.com',
+            fullName: 'System Admin',
+            role: 'Admin',
+            department: 'IT',
+            passwordHash,
+            isActive: true
+        });
+
+        await admin.save();
+
+        logger.info('Initial admin user created via setup endpoint', {
+            userId: admin._id,
+            username: admin.username
+        });
+
+        return res.status(201).json({ 
+            message: 'Initial admin user created successfully',
+            username: admin.username
+        });
+    } catch (error) {
+        logger.error('Setup initial admin error', {
+            error: error.message,
+            stack: error.stack
+        });
+        return res.status(500).json({ message: 'Error creating initial admin user' });
     }
 };

@@ -239,34 +239,29 @@ export const updateAsset = async (req, res) => {
     logger.info('Updating asset', {
       requesterId: req.user._id,
       assetId: id,
-      updateData: req.body
+      updateData: JSON.stringify(req.body, null, 2)
     });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const msg = 'Invalid asset ID format';
+      logger.error(msg, { id });
+      return res.status(400).json({ message: msg });
+    }
 
     const asset = await Asset.findById(id);
     if (!asset) {
+      const msg = 'Asset not found';
       logger.warn('Update failed - asset not found', {
         requesterId: req.user._id,
         assetId: id
       });
-
-      await SystemLog.create({
-        level: 'warn',
-        message: 'Attempt to update non-existent asset',
-        service: 'asset-service',
-        metadata: {
-          requesterId: req.user._id,
-          assetId: id
-        },
-        user: req.user._id
-      });
-
-      return res.status(404).json({ message: 'Asset not found' });
+      return res.status(404).json({ message: msg });
     }
 
     // Track changes for logging
     const changes = [];
     Object.keys(req.body).forEach(key => {
-      if (asset[key] !== req.body[key]) {
+      if (JSON.stringify(asset[key]) !== JSON.stringify(req.body[key])) {
         changes.push({
           field: key,
           oldValue: asset[key],
@@ -275,54 +270,93 @@ export const updateAsset = async (req, res) => {
       }
     });
 
+    // Handle status and assignedTo relationship
+    if (req.body.status === 'In Use' && !req.body.assignedTo) {
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: {
+          assignedTo: 'Asset must be assigned to a user when status is In Use'
+        }
+      });
+    }
+
+    if (req.body.status && req.body.status !== 'In Use') {
+      req.body.assignedTo = null;
+    }
+
     // Update the asset
-    Object.assign(asset, req.body);
-    await asset.save();
+    try {
+      const updatedAsset = await Asset.findByIdAndUpdate(
+        id,
+        { $set: req.body },
+        { new: true, runValidators: true }
+      );
 
-    // Create activity log with detailed changes
-    await Log.create({
-      user: req.user._id,
-      action: 'Update Asset',
-      category: 'Asset Management',
-      target: asset._id,
-      details: `Asset ${asset.name} (${asset.assetTag}) updated. Changes: ${JSON.stringify(changes)}`
-    });
+      // Create activity log with detailed changes
+      await Log.create({
+        user: req.user._id,
+        action: 'Update Asset',
+        category: 'Asset Management',
+        target: updatedAsset._id,
+        details: `Asset ${updatedAsset.name} (${updatedAsset.assetTag}) updated. Changes: ${JSON.stringify(changes)}`
+      });
 
-    await SystemLog.create({
-      level: 'info',
-      message: 'Asset updated',
-      service: 'asset-service',
-      metadata: {
+      await SystemLog.create({
+        level: 'info',
+        message: 'Asset updated',
+        service: 'asset-service',
+        metadata: {
+          requesterId: req.user._id,
+          assetId: id,
+          changes
+        },
+        user: req.user._id
+      });
+
+      // Notify relevant users about the update
+      if (updatedAsset.assignedTo) {
+        await createNotification(
+          updatedAsset.assignedTo,
+          'asset',
+          `Asset ${updatedAsset.name} assigned to you has been updated`,
+          { assetId: updatedAsset._id }
+        );
+      }
+
+      logger.info('Asset updated successfully', {
         requesterId: req.user._id,
         assetId: id,
         changes
-      },
-      user: req.user._id
-    });
+      });
 
-    // Notify relevant users about the update
-    if (asset.assignedTo) {
-      await createNotification(
-        asset.assignedTo,
-        'asset',
-        `Asset ${asset.name} assigned to you has been updated`,
-        { assetId: asset._id }
-      );
+      res.json(updatedAsset);
+    } catch (validationError) {
+      logger.error('Validation error updating asset', {
+        error: validationError.message,
+        errors: validationError.errors,
+        requesterId: req.user._id,
+        assetId: id,
+        body: req.body
+      });
+
+      if (validationError.name === 'ValidationError') {
+        return res.status(400).json({
+          message: 'Validation error',
+          errors: Object.keys(validationError.errors).reduce((acc, key) => {
+            acc[key] = validationError.errors[key].message;
+            return acc;
+          }, {})
+        });
+      }
+      throw validationError;
     }
-
-    logger.info('Asset updated successfully', {
-      requesterId: req.user._id,
-      assetId: id,
-      changes
-    });
-
-    res.json(asset);
   } catch (error) {
     logger.error('Error updating asset', {
       error: error.message,
       stack: error.stack,
       requesterId: req.user._id,
-      assetId: req.params.id
+      assetId: req.params.id,
+      body: req.body
     });
 
     await SystemLog.create({
@@ -338,7 +372,10 @@ export const updateAsset = async (req, res) => {
       user: req.user._id
     });
 
-    res.status(500).json({ message: 'Error updating asset' });
+    res.status(500).json({ 
+      message: 'Error updating asset',
+      error: error.message
+    });
   }
 };
 

@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
 import SystemLog from '../models/SystemLog.js';
 import '../utils/dbMonitor.js';
+import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
 
 // Monitor mongoose connection events
 const monitorConnection = () => {
@@ -57,6 +59,44 @@ const monitorConnection = () => {
       logger.error('Error logging slow query', { error: error.message });
     }
   });
+};
+
+const createInitialAdmin = async () => {
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash('Admin123!', salt);
+    
+    const admin = await User.findOneAndUpdate(
+      { username: 'admin' },
+      {
+        username: 'admin',
+        email: 'admin@example.com',
+        fullName: 'System Admin',
+        role: 'Admin',
+        department: 'IT',
+        passwordHash,
+        isActive: true
+      },
+      { 
+        upsert: true, 
+        new: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    logger.info('Admin user ensured', {
+      userId: admin._id,
+      username: admin.username
+    });
+    
+    return admin;
+  } catch (error) {
+    logger.error('Error ensuring admin user', {
+      error: error.message,
+      stack: error.stack
+    });
+    throw error;
+  }
 };
 
 // Log database events to SystemLog
@@ -125,6 +165,9 @@ const connectDB = async () => {
 
       // Set up connection monitoring
       monitorConnection();
+
+      // Create initial admin user if none exists
+      await createInitialAdmin();
 
       // Log successful connection
       try {

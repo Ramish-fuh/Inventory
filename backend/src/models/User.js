@@ -226,52 +226,13 @@ userSchema.post('remove', async function(doc, next) {
 // Password comparison method with logging
 userSchema.methods.comparePassword = async function(candidatePassword) {
   try {
-    const startTime = Date.now();
-    const isMatch = await bcrypt.compare(candidatePassword, this.passwordHash);
-    const duration = Date.now() - startTime;
-
-    logger.info('Password comparison completed', {
-      userId: this._id,
-      success: isMatch,
-      duration
-    });
-
-    if (!isMatch) {
-      logger.warn('Failed password attempt', {
-        userId: this._id,
-        username: this.username
-      });
-
-      await SystemLog.create({
-        level: 'warn',
-        message: 'Failed password attempt',
-        service: 'user-model',
-        metadata: {
-          userId: this._id,
-          username: this.username
-        }
-      });
-    }
-
-    return isMatch;
+    return await bcrypt.compare(candidatePassword, this.passwordHash);
   } catch (error) {
-    logger.error('Error comparing password', {
+    logger.error('Error comparing passwords', {
       error: error.message,
       stack: error.stack,
       userId: this._id
     });
-
-    await SystemLog.create({
-      level: 'error',
-      message: 'Error comparing password',
-      service: 'user-model',
-      metadata: {
-        userId: this._id,
-        error: error.message
-      },
-      trace: error.stack
-    });
-
     throw error;
   }
 };

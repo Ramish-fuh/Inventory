@@ -21,16 +21,16 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
     assetTag: '',
     category: '',
     status: '',
-    assignedTo: '',
+    assignedTo: null,
     location: '',
     notes: '',
     serialNumber: '',
-    purchaseDate: '',
-    warrantyExpiry: '',
-    licenseExpiry: '',
-    nextMaintenance: '',
+    purchaseDate: null,
+    warrantyExpiry: null,
+    licenseExpiry: null,
+    nextMaintenance: null,
     maintenanceInterval: '',
-    lastMaintenance: ''
+    lastMaintenance: null
   });
 
   const [errors, setErrors] = useState({});
@@ -39,52 +39,88 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
 
   useEffect(() => {
     if (asset) {
+      // Convert dates to YYYY-MM-DD format for input fields
+      const formatDate = (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+      };
+
       setFormData({
         name: asset.name || '',
         assetTag: asset.assetTag || '',
         category: asset.category || '',
         status: asset.status || '',
-        assignedTo: asset.assignedTo || '',
+        assignedTo: asset.assignedTo?._id || null, // Store the user ID
         location: asset.location || '',
         notes: asset.notes || '',
         serialNumber: asset.serialNumber || '',
-        purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().split('T')[0] : '',
-        warrantyExpiry: asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toISOString().split('T')[0] : '',
-        licenseExpiry: asset.licenseExpiry ? new Date(asset.licenseExpiry).toISOString().split('T')[0] : '',
-        nextMaintenance: asset.nextMaintenance ? new Date(asset.nextMaintenance).toISOString().split('T')[0] : '',
+        purchaseDate: formatDate(asset.purchaseDate),
+        warrantyExpiry: formatDate(asset.warrantyExpiry),
+        licenseExpiry: formatDate(asset.licenseExpiry),
+        nextMaintenance: formatDate(asset.nextMaintenance),
         maintenanceInterval: asset.maintenanceInterval || '',
-        lastMaintenance: asset.lastMaintenance ? new Date(asset.lastMaintenance).toISOString().split('T')[0] : ''
+        lastMaintenance: formatDate(asset.lastMaintenance)
       });
     }
   }, [asset]);
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.assetTag) newErrors.assetTag = 'Asset tag is required';
+    
+    // Required fields
+    if (!formData.name?.trim()) newErrors.name = 'Name is required';
+    if (!formData.assetTag?.trim()) newErrors.assetTag = 'Asset tag is required';
     if (!formData.category) newErrors.category = 'Category is required';
     if (!formData.status) newErrors.status = 'Status is required';
     
-    if (formData.maintenanceInterval && isNaN(formData.maintenanceInterval)) {
-      newErrors.maintenanceInterval = 'Must be a number';
-    }
-
-    // Validate dates
+    // Date validations
     const today = new Date();
-    const purchaseDate = formData.purchaseDate ? new Date(formData.purchaseDate) : null;
-    const warrantyExpiry = formData.warrantyExpiry ? new Date(formData.warrantyExpiry) : null;
-    const licenseExpiry = formData.licenseExpiry ? new Date(formData.licenseExpiry) : null;
-    
+    today.setHours(0, 0, 0, 0); // Reset time part for date comparisons
+
+    const validateDate = (dateStr) => {
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      return !isNaN(date.getTime()) ? date : null;
+    };
+
+    const purchaseDate = validateDate(formData.purchaseDate);
+    const warrantyExpiry = validateDate(formData.warrantyExpiry);
+    const licenseExpiry = validateDate(formData.licenseExpiry);
+    const lastMaintenance = validateDate(formData.lastMaintenance);
+    const nextMaintenance = validateDate(formData.nextMaintenance);
+
+    // Purchase date cannot be in the future
     if (purchaseDate && purchaseDate > today) {
       newErrors.purchaseDate = 'Purchase date cannot be in the future';
     }
-    
+
+    // Warranty expiry must be after purchase date
     if (warrantyExpiry && purchaseDate && warrantyExpiry < purchaseDate) {
       newErrors.warrantyExpiry = 'Warranty expiry must be after purchase date';
     }
-    
+
+    // License expiry validation
     if (licenseExpiry && purchaseDate && licenseExpiry < purchaseDate) {
       newErrors.licenseExpiry = 'License expiry must be after purchase date';
+    }
+
+    // Maintenance interval must be a positive integer
+    if (formData.maintenanceInterval) {
+      const interval = Number(formData.maintenanceInterval);
+      if (isNaN(interval) || interval < 0 || !Number.isInteger(interval)) {
+        newErrors.maintenanceInterval = 'Maintenance interval must be a positive whole number';
+      }
+    }
+
+    // Last maintenance cannot be in the future
+    if (lastMaintenance && lastMaintenance > today) {
+      newErrors.lastMaintenance = 'Last maintenance date cannot be in the future';
+    }
+
+    // Next maintenance must be in the future
+    if (nextMaintenance && nextMaintenance < today) {
+      newErrors.nextMaintenance = 'Next maintenance date must be in the future';
     }
 
     setErrors(newErrors);
@@ -128,21 +164,76 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
     }
   };
 
+  const prepareDataForSubmission = () => {
+    const data = { ...formData };
+    
+    // Handle date fields
+    const dateFields = ['purchaseDate', 'warrantyExpiry', 'licenseExpiry', 'nextMaintenance', 'lastMaintenance'];
+    dateFields.forEach(field => {
+      if (data[field]) {
+        // Ensure date is in ISO format for MongoDB
+        const date = new Date(data[field]);
+        if (!isNaN(date.getTime())) {
+          data[field] = date.toISOString();
+        } else {
+          data[field] = null;
+        }
+      } else {
+        data[field] = null;
+      }
+    });
+
+    // Convert maintenanceInterval to number or null
+    if (data.maintenanceInterval === '') {
+      data.maintenanceInterval = null;
+    } else if (data.maintenanceInterval) {
+      data.maintenanceInterval = Number(data.maintenanceInterval);
+    }
+
+    // Handle assignedTo field - ensure it's an ObjectId or null
+    if (!data.assignedTo || data.assignedTo === '') {
+      data.assignedTo = null;
+    }
+
+    // Convert empty strings to null for optional fields
+    ['location', 'notes', 'serialNumber'].forEach(field => {
+      if (data[field] === '') {
+        data[field] = null;
+      }
+    });
+
+    return data;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     try {
-      const response = await apiClient.put(`/api/assets/${asset._id}`, formData);
+      const dataToSubmit = prepareDataForSubmission();
+      console.log('Submitting form data:', JSON.stringify(dataToSubmit, null, 2));
+      const response = await apiClient.put(`/api/assets/${asset._id}`, dataToSubmit);
       onUpdate(response.data);
       onClose();
     } catch (err) {
-      const serverErrors = err.response?.data?.errors || {};
-      setErrors(prev => ({
-        ...prev,
-        ...serverErrors,
-        submit: err.response?.data?.message || 'Error updating asset'
-      }));
+      console.error('Server validation error details:', {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message
+      });
+      
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        setErrors(prev => ({
+          ...prev,
+          ...err.response.data.errors,
+          submit: err.response.data.message
+        }));
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          submit: err.response?.data?.message || err.response?.data?.error || 'Error updating asset'
+        }));
+      }
     }
   };
 
@@ -152,7 +243,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
       <form onSubmit={handleSubmit}>
         <DialogContent>
           {errors.submit && (
-            <div className={styles.error} style={{ marginBottom: '1rem' }}>
+            <div className={styles.error} style={{ marginBottom: '1rem', color: 'red' }}>
               {errors.submit}
             </div>
           )}
@@ -238,7 +329,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               label="Purchase Date"
               name="purchaseDate"
               type="date"
-              value={formData.purchaseDate}
+              value={formData.purchaseDate || ''}
               onChange={handleChange}
               error={!!errors.purchaseDate}
               helperText={errors.purchaseDate}
@@ -250,7 +341,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               label="Warranty Expiry"
               name="warrantyExpiry"
               type="date"
-              value={formData.warrantyExpiry}
+              value={formData.warrantyExpiry || ''}
               onChange={handleChange}
               error={!!errors.warrantyExpiry}
               helperText={errors.warrantyExpiry}
@@ -262,7 +353,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               label="License Expiry"
               name="licenseExpiry"
               type="date"
-              value={formData.licenseExpiry}
+              value={formData.licenseExpiry || ''}
               onChange={handleChange}
               error={!!errors.licenseExpiry}
               helperText={errors.licenseExpiry}
@@ -285,7 +376,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               label="Last Maintenance"
               name="lastMaintenance"
               type="date"
-              value={formData.lastMaintenance}
+              value={formData.lastMaintenance || ''}
               onChange={handleChange}
               error={!!errors.lastMaintenance}
               helperText={errors.lastMaintenance}
