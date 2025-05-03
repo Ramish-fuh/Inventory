@@ -1,6 +1,7 @@
 import Log from '../models/Log.js';
 import SystemLog from '../models/SystemLog.js';
 import logger from '../utils/logger.js';
+import { generatePDFReport, generateExcelReport } from '../utils/reportGenerator.js';
 
 // Create a new log entry
 export const createLog = async (req, res) => {
@@ -34,11 +35,14 @@ export const getLogs = async (req, res) => {
 
     const query = {};
 
-    // Add date range filter
     if (startDate || endDate) {
       query.timestamp = {};
-      if (startDate) query.timestamp.$gte = new Date(startDate);
-      if (endDate) query.timestamp.$lte = new Date(endDate);
+      if (startDate) {
+        query.timestamp.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.timestamp.$lte = new Date(endDate);
+      }
     }
 
     // Add other filters
@@ -46,19 +50,11 @@ export const getLogs = async (req, res) => {
     if (action) query.action = action;
     if (user) query.user = user;
 
-    // Only select fields that are displayed in the frontend
-    const logs = await Log.find(query, {
-      timestamp: 1,
-      category: 1,
-      action: 1,
-      details: 1,
-      user: 1
-    })
+    const logs = await Log.find(query)
       .populate('user', 'username fullName')
       .sort({ timestamp: -1 })
       .skip(skip)
-      .limit(pageSize)
-      .lean(); // Convert to plain JS objects for better performance
+      .limit(pageSize);
 
     const total = await Log.countDocuments(query);
 
@@ -83,6 +79,7 @@ export const getLogs = async (req, res) => {
       stack: error.stack,
       requesterId: req.user._id
     });
+
     res.status(500).json({ message: 'Error fetching logs' });
   }
 };
@@ -149,31 +146,26 @@ export const getSystemLogs = async (req, res) => {
 
     const query = {};
 
-    // Add date range filter
+    // Add date range filter using exact timestamps from query
     if (startDate || endDate) {
       query.timestamp = {};
-      if (startDate) query.timestamp.$gte = new Date(startDate);
-      if (endDate) query.timestamp.$lte = new Date(endDate);
+      if (startDate) {
+        query.timestamp.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.timestamp.$lte = new Date(endDate);
+      }
     }
 
     // Add other filters
     if (level) query.level = level;
     if (service) query.service = service;
 
-    // Only select fields that are displayed in the frontend
-    const logs = await SystemLog.find(query, {
-      timestamp: 1,
-      level: 1,
-      service: 1,
-      message: 1,
-      details: 1,
-      user: 1
-    })
+    const logs = await SystemLog.find(query)
       .populate('user', 'username fullName')
       .sort({ timestamp: -1 })
       .skip(skip)
-      .limit(pageSize)
-      .lean(); // Convert to plain JS objects for better performance
+      .limit(pageSize);
 
     const total = await SystemLog.countDocuments(query);
 
@@ -305,5 +297,73 @@ export const getMetrics = async (req, res) => {
     });
 
     res.status(500).json({ message: 'Error fetching metrics' });
+  }
+};
+
+export const exportLogs = async (req, res) => {
+  try {
+    const {
+      type,
+      startDate,
+      endDate,
+      category,
+      level,
+      format = 'excel'
+    } = req.query;
+
+    logger.info('Exporting logs', {
+      requesterId: req.user._id,
+      query: req.query
+    });
+
+    const query = {};
+
+    // Add date range filter using exact timestamps from query
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) {
+        query.timestamp.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.timestamp.$lte = new Date(endDate);
+      }
+    }
+
+    let logs;
+    if (type === 'activity') {
+      if (category) query.category = category;
+      logs = await Log.find(query)
+        .populate('user', 'username fullName')
+        .sort({ timestamp: -1 });
+    } else if (type === 'system') {
+      if (level) query.level = level;
+      logs = await SystemLog.find(query)
+        .populate('user', 'username fullName')
+        .sort({ timestamp: -1 });
+    } else {
+      return res.status(400).json({ message: 'Invalid log type specified' });
+    }
+
+    // Generate Excel or PDF file
+    const buffer = format === 'pdf' 
+      ? await generatePDFReport(logs, type)
+      : await generateExcelReport(logs, type);
+
+    // Set appropriate headers
+    res.setHeader('Content-Type', format === 'pdf' 
+      ? 'application/pdf'
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename=logs-${type}-${new Date().toISOString().split('T')[0]}.${format}`);
+    
+    res.send(buffer);
+
+  } catch (error) {
+    logger.error('Error exporting logs', {
+      error: error.message,
+      stack: error.stack,
+      requesterId: req.user._id
+    });
+    res.status(500).json({ message: 'Error exporting logs' });
   }
 };

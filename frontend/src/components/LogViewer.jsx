@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Table,
@@ -21,20 +21,35 @@ import {
   Tooltip,
   CircularProgress,
   Pagination,
-  Stack
+  Stack,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ErrorIcon from '@mui/icons-material/Error';
 import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
+import apiClient from '../index';
 
 const LogViewer = () => {
   const [activeTab, setActiveTab] = useState('activity');
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState('excel');
+  const [exportFilters, setExportFilters] = useState({
+    startDate: null,
+    endDate: null,
+    category: '',
+    level: '',
+  });
   const [filters, setFilters] = useState({
     startDate: null,
     endDate: null,
@@ -50,14 +65,41 @@ const LogViewer = () => {
     pages: 0
   });
 
-  const fetchLogs = useCallback(async () => {
+  const adjustDateToUTC = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    // Create UTC date with the same day boundaries
+    return new Date(Date.UTC(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate(),
+      d.getHours(),
+      d.getMinutes(),
+      d.getSeconds(),
+      d.getMilliseconds()
+    ));
+  };
+
+  const fetchLogs = async () => {
     try {
       setLoading(true);
+      
+      let adjustedStartDate = adjustDateToUTC(filters.startDate);
+      let adjustedEndDate = adjustDateToUTC(filters.endDate);
+
+      if (adjustedStartDate) {
+        adjustedStartDate.setUTCHours(0, 0, 0, 0);
+      }
+
+      if (adjustedEndDate) {
+        adjustedEndDate.setUTCHours(23, 59, 59, 999);
+      }
+
       const queryParams = new URLSearchParams({
         page: pagination.page,
         limit: pagination.pageSize,
-        ...(filters.startDate && { startDate: filters.startDate.toISOString() }),
-        ...(filters.endDate && { endDate: filters.endDate.toISOString() }),
+        ...(adjustedStartDate && { startDate: adjustedStartDate.toISOString() }),
+        ...(adjustedEndDate && { endDate: adjustedEndDate.toISOString() }),
         ...(filters.level && { level: filters.level }),
         ...(filters.category && { category: filters.category }),
         ...(filters.action && { action: filters.action }),
@@ -75,25 +117,25 @@ const LogViewer = () => {
       
       const data = await response.json();
       setLogs(data.logs);
-      setPagination(prev => ({
-        ...prev,
+      setPagination({
+        ...pagination,
         total: data.pagination.total,
         pages: data.pagination.pages
-      }));
+      });
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, pagination.page, pagination.pageSize, filters.startDate, filters.endDate, filters.level, filters.category, filters.action, filters.service]);
+  };
 
   useEffect(() => {
     fetchLogs();
-  }, [fetchLogs]);
+  }, [activeTab, pagination.page, pagination.pageSize, filters]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPagination({ ...pagination, page: 1 });
     setFilters({
       startDate: null,
       endDate: null,
@@ -105,16 +147,16 @@ const LogViewer = () => {
   };
 
   const handlePageChange = (event, newPage) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
+    setPagination({ ...pagination, page: newPage });
     window.scrollTo(0, 0);
   };
 
   const handlePageSizeChange = (event) => {
-    setPagination(prev => ({
-      ...prev,
+    setPagination({
+      ...pagination,
       pageSize: event.target.value,
       page: 1
-    }));
+    });
   };
 
   const getLevelIcon = (level) => {
@@ -133,6 +175,139 @@ const LogViewer = () => {
   const formatDate = (date) => {
     return new Date(date).toLocaleString();
   };
+
+  const handleExport = async () => {
+    try {
+      let adjustedStartDate = adjustDateToUTC(exportFilters.startDate);
+      let adjustedEndDate = adjustDateToUTC(exportFilters.endDate);
+
+      if (adjustedStartDate) {
+        adjustedStartDate.setUTCHours(0, 0, 0, 0);
+      }
+
+      if (adjustedEndDate) {
+        adjustedEndDate.setUTCHours(23, 59, 59, 999);
+      }
+
+      const queryParams = new URLSearchParams({
+        type: activeTab,
+        format: exportFormat,
+        ...(adjustedStartDate && { startDate: adjustedStartDate.toISOString() }),
+        ...(adjustedEndDate && { endDate: adjustedEndDate.toISOString() }),
+        ...(activeTab === 'activity' && exportFilters.category && { category: exportFilters.category }),
+        ...(activeTab === 'system' && exportFilters.level && { level: exportFilters.level })
+      });
+
+      const response = await apiClient.get(`/api/logs/export?${queryParams}`, {
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([response.data], {
+        type: exportFormat === 'pdf' 
+          ? 'application/pdf' 
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `logs-${activeTab}-${new Date().toISOString().split('T')[0]}.${exportFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setExportDialogOpen(false);
+    } catch (error) {
+      console.error('Error exporting logs:', error);
+    }
+  };
+
+  const ExportDialog = () => (
+    <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)}>
+      <DialogTitle>Export Logs</DialogTitle>
+      <DialogContent>
+        <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid item xs={12}>
+            <FormControl fullWidth>
+              <InputLabel>Format</InputLabel>
+              <Select
+                value={exportFormat}
+                label="Format"
+                onChange={(e) => setExportFormat(e.target.value)}
+              >
+                <MenuItem value="excel">Excel</MenuItem>
+                <MenuItem value="pdf">PDF</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Start Date"
+                value={exportFilters.startDate}
+                onChange={(date) => setExportFilters({ ...exportFilters, startDate: date })}
+                renderInput={(params) => <TextField {...params} fullWidth />}
+              />
+            </LocalizationProvider>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="End Date"
+                value={exportFilters.endDate}
+                onChange={(date) => setExportFilters({ ...exportFilters, endDate: date })}
+                renderInput={(params) => <TextField {...params} fullWidth />}
+              />
+            </LocalizationProvider>
+          </Grid>
+
+          {activeTab === 'activity' && (
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={exportFilters.category}
+                  label="Category"
+                  onChange={(e) => setExportFilters({ ...exportFilters, category: e.target.value })}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="Authentication">Authentication</MenuItem>
+                  <MenuItem value="Asset">Asset</MenuItem>
+                  <MenuItem value="User">User</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+
+          {activeTab === 'system' && (
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Level</InputLabel>
+                <Select
+                  value={exportFilters.level}
+                  label="Level"
+                  onChange={(e) => setExportFilters({ ...exportFilters, level: e.target.value })}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="info">Info</MenuItem>
+                  <MenuItem value="warn">Warning</MenuItem>
+                  <MenuItem value="error">Error</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+        </Grid>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+        <Button onClick={handleExport} variant="contained" color="primary">
+          Export
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
@@ -206,6 +381,16 @@ const LogViewer = () => {
           >
             <RefreshIcon />
           </IconButton>
+        </Grid>
+        <Grid item>
+          <Button
+            variant="contained"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => setExportDialogOpen(true)}
+            sx={{ mt: 1 }}
+          >
+            Export Logs
+          </Button>
         </Grid>
       </Grid>
 
@@ -310,6 +495,8 @@ const LogViewer = () => {
           />
         </Stack>
       </Stack>
+
+      <ExportDialog />
     </Box>
   );
 };

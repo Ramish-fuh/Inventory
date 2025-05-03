@@ -3,10 +3,10 @@ import ExcelJS from 'exceljs';
 import logger from './logger.js';
 import SystemLog from '../models/SystemLog.js';
 
-export const generatePDFReport = async (assets) => {
+export const generatePDFReport = async (data, type = 'asset') => {
   try {
-    logger.info('Starting PDF report generation', {
-      assetCount: assets.length
+    logger.info(`Starting PDF report generation for ${type}`, {
+      count: data.length
     });
 
     const startTime = Date.now();
@@ -14,11 +14,9 @@ export const generatePDFReport = async (assets) => {
     const chunks = [];
 
     doc.on('data', chunk => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
 
     // Add content to PDF
-    doc.fontSize(20).text('Asset Inventory Report', { align: 'center' });
+    doc.fontSize(20).text(`${type.charAt(0).toUpperCase() + type.slice(1)} Report`, { align: 'center' });
     doc.moveDown(2);
     doc.fontSize(12);
 
@@ -26,15 +24,36 @@ export const generatePDFReport = async (assets) => {
     doc.text(`Generated on: ${new Date().toLocaleString()}`, { align: 'right' });
     doc.moveDown(2);
 
-    // Define column widths and positions
+    // Define column widths and positions based on type
     const pageWidth = doc.page.width - 100; // 50px margin on each side
-    const columns = [
-      { header: 'Name', width: pageWidth * 0.25 },
-      { header: 'Category', width: pageWidth * 0.15 },
-      { header: 'Status', width: pageWidth * 0.15 },
-      { header: 'Location', width: pageWidth * 0.2 },
-      { header: 'Assigned To', width: pageWidth * 0.25 }
-    ];
+    let columns;
+
+    if (type === 'activity') {
+      columns = [
+        { header: 'Timestamp', width: pageWidth * 0.2 },
+        { header: 'User', width: pageWidth * 0.15 },
+        { header: 'Category', width: pageWidth * 0.15 },
+        { header: 'Action', width: pageWidth * 0.2 },
+        { header: 'Details', width: pageWidth * 0.3 }
+      ];
+    } else if (type === 'system') {
+      columns = [
+        { header: 'Timestamp', width: pageWidth * 0.15 },
+        { header: 'Level', width: pageWidth * 0.1 },
+        { header: 'Service', width: pageWidth * 0.15 },
+        { header: 'Message', width: pageWidth * 0.3 },
+        { header: 'Details', width: pageWidth * 0.3 }
+      ];
+    } else {
+      // Asset report columns (existing implementation)
+      columns = [
+        { header: 'Name', width: pageWidth * 0.25 },
+        { header: 'Category', width: pageWidth * 0.15 },
+        { header: 'Status', width: pageWidth * 0.15 },
+        { header: 'Location', width: pageWidth * 0.2 },
+        { header: 'Assigned To', width: pageWidth * 0.25 }
+      ];
+    }
 
     // Calculate starting position
     let xPos = 50;
@@ -59,8 +78,8 @@ export const generatePDFReport = async (assets) => {
     // Reset font
     doc.font('Helvetica');
 
-    // Add assets data
-    assets.forEach(asset => {
+    // Add data
+    data.forEach(item => {
       // Check if we need a new page
       if (doc.y > doc.page.height - 100) {
         doc.addPage();
@@ -73,12 +92,31 @@ export const generatePDFReport = async (assets) => {
       // Draw each column with proper width and wrapping
       columns.forEach((column, index) => {
         let value = '';
-        switch (index) {
-          case 0: value = asset.name || ''; break;
-          case 1: value = asset.category || ''; break;
-          case 2: value = asset.status || ''; break;
-          case 3: value = asset.location || ''; break;
-          case 4: value = asset.assignedTo || ''; break;
+        if (type === 'activity') {
+          switch (index) {
+            case 0: value = new Date(item.timestamp).toLocaleString(); break;
+            case 1: value = item.user ? `${item.user.fullName} (${item.user.username})` : 'System'; break;
+            case 2: value = item.category || ''; break;
+            case 3: value = item.action || ''; break;
+            case 4: value = item.details || ''; break;
+          }
+        } else if (type === 'system') {
+          switch (index) {
+            case 0: value = new Date(item.timestamp).toLocaleString(); break;
+            case 1: value = item.level || ''; break;
+            case 2: value = item.service || ''; break;
+            case 3: value = item.message || ''; break;
+            case 4: value = typeof item.details === 'object' ? JSON.stringify(item.details, null, 2) : (item.details || ''); break;
+          }
+        } else {
+          // Asset report (existing implementation)
+          switch (index) {
+            case 0: value = item.name || ''; break;
+            case 1: value = item.category || ''; break;
+            case 2: value = item.status || ''; break;
+            case 3: value = item.location || ''; break;
+            case 4: value = item.assignedTo || ''; break;
+          }
         }
 
         doc.text(value, xPos, yPos, {
@@ -88,7 +126,7 @@ export const generatePDFReport = async (assets) => {
         xPos += column.width;
       });
 
-      // Move down for the next row, considering the highest content
+      // Move down for the next row
       doc.moveDown();
     });
 
@@ -97,21 +135,22 @@ export const generatePDFReport = async (assets) => {
         const buffer = Buffer.concat(chunks);
         const duration = Date.now() - startTime;
 
-        logger.info('PDF report generated successfully', {
+        logger.info(`PDF ${type} report generated successfully`, {
           size: buffer.length,
           duration,
-          assetCount: assets.length
+          count: data.length
         });
 
         SystemLog.create({
           level: 'info',
-          message: 'PDF report generated',
+          message: `PDF ${type} report generated`,
           service: 'report-generator',
           metadata: {
             type: 'pdf',
+            reportType: type,
             size: buffer.length,
             duration,
-            assetCount: assets.length
+            count: data.length
           }
         }).catch(err => logger.error('Error logging PDF generation', { error: err }));
 
@@ -121,20 +160,21 @@ export const generatePDFReport = async (assets) => {
       doc.end();
     });
   } catch (error) {
-    logger.error('Error generating PDF report', {
+    logger.error(`Error generating PDF ${type} report`, {
       error: error.message,
       stack: error.stack,
-      assetCount: assets.length
+      count: data.length
     });
 
     await SystemLog.create({
       level: 'error',
-      message: 'Error generating PDF report',
+      message: `Error generating PDF ${type} report`,
       service: 'report-generator',
       metadata: {
         type: 'pdf',
+        reportType: type,
         error: error.message,
-        assetCount: assets.length
+        count: data.length
       },
       trace: error.stack
     });
@@ -143,18 +183,18 @@ export const generatePDFReport = async (assets) => {
   }
 };
 
-export const generateExcelReport = async (assets) => {
+export const generateExcelReport = async (data, type = 'asset') => {
   try {
-    logger.info('Starting Excel report generation', {
-      assetCount: assets.length
+    logger.info(`Starting Excel report generation for ${type}`, {
+      count: data.length
     });
 
     const startTime = Date.now();
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Asset Inventory');
+    const worksheet = workbook.addWorksheet(`${type.charAt(0).toUpperCase() + type.slice(1)} Report`);
 
     // Add report generation info
-    worksheet.getCell('A1').value = 'Asset Inventory Report';
+    worksheet.getCell('A1').value = `${type.charAt(0).toUpperCase() + type.slice(1)} Report`;
     worksheet.getCell('A2').value = `Generated on: ${new Date().toLocaleString()}`;
     worksheet.mergeCells('A1:H1');
     worksheet.mergeCells('A2:H2');
@@ -167,19 +207,39 @@ export const generateExcelReport = async (assets) => {
     // Add empty row for spacing
     worksheet.addRow([]);
 
-    // Add headers
-    const headerRow = worksheet.addRow([
-      'Name',
-      'Category',
-      'Status',
-      'Location',
-      'Assigned To',
-      'Serial Number',
-      'Purchase Date',
-      'Warranty Expiry',
-      'License Expiry',
-      'Next Maintenance'
-    ]);
+    // Add headers based on type
+    let headers;
+    if (type === 'activity') {
+      headers = ['Timestamp', 'User', 'Category', 'Action', 'Details'];
+      worksheet.columns = [
+        { width: 20 }, // Timestamp
+        { width: 30 }, // User
+        { width: 15 }, // Category
+        { width: 20 }, // Action
+        { width: 50 }  // Details
+      ];
+    } else if (type === 'system') {
+      headers = ['Timestamp', 'Level', 'Service', 'Message', 'Details'];
+      worksheet.columns = [
+        { width: 20 }, // Timestamp
+        { width: 10 }, // Level
+        { width: 15 }, // Service
+        { width: 40 }, // Message
+        { width: 50 }  // Details
+      ];
+    } else {
+      // Asset report (existing implementation)
+      headers = ['Name', 'Category', 'Status', 'Location', 'Assigned To'];
+      worksheet.columns = [
+        { width: 30 }, // Name
+        { width: 15 }, // Category
+        { width: 15 }, // Status
+        { width: 20 }, // Location
+        { width: 20 }  // Assigned To
+      ];
+    }
+
+    const headerRow = worksheet.addRow(headers);
 
     // Style the header row
     headerRow.font = { bold: true };
@@ -189,127 +249,109 @@ export const generateExcelReport = async (assets) => {
       fgColor: { argb: 'FFE0E0E0' }
     };
 
-    // Set column widths
-    worksheet.columns = [
-      { width: 30 }, // Name
-      { width: 15 }, // Category
-      { width: 15 }, // Status
-      { width: 20 }, // Location
-      { width: 20 }, // Assigned To
-      { width: 20 }, // Serial Number
-      { width: 15 }, // Purchase Date
-      { width: 15 }, // Warranty Expiry
-      { width: 15 }, // License Expiry
-      { width: 15 }  // Next Maintenance
-    ];
-
     // Add data
-    assets.forEach(asset => {
-      const row = worksheet.addRow([
-        asset.name,
-        asset.category,
-        asset.status,
-        asset.location,
-        asset.assignedTo,
-        asset.serialNumber,
-        asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : '',
-        asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toLocaleDateString() : '',
-        asset.licenseExpiry ? new Date(asset.licenseExpiry).toLocaleDateString() : '',
-        asset.nextMaintenance ? new Date(asset.nextMaintenance).toLocaleDateString() : ''
-      ]);
+    data.forEach(item => {
+      let rowData;
+      if (type === 'activity') {
+        rowData = [
+          new Date(item.timestamp).toLocaleString(),
+          item.user ? `${item.user.fullName} (${item.user.username})` : 'System',
+          item.category || '',
+          item.action || '',
+          item.details || ''
+        ];
+      } else if (type === 'system') {
+        rowData = [
+          new Date(item.timestamp).toLocaleString(),
+          item.level || '',
+          item.service || '',
+          item.message || '',
+          typeof item.details === 'object' ? JSON.stringify(item.details, null, 2) : (item.details || '')
+        ];
+      } else {
+        // Asset report (existing implementation)
+        rowData = [
+          item.name || '',
+          item.category || '',
+          item.status || '',
+          item.location || '',
+          item.assignedTo || ''
+        ];
+      }
+      worksheet.addRow(rowData);
+    });
 
-      // Add conditional formatting for dates
-      const today = new Date();
-      const critical = new Date();
-      const warning = new Date();
-      const notice = new Date();
-      critical.setDate(today.getDate() + 7);  // Critical: 7 days
-      warning.setDate(today.getDate() + 15);  // Warning: 15 days
-      notice.setDate(today.getDate() + 30);   // Notice: 30 days
-
-      // Color code expiring dates
-      [7, 8, 9].forEach(colIndex => { // Warranty, License, and Maintenance columns
-        const dateValue = row.getCell(colIndex).value;
-        if (dateValue) {
-          const date = new Date(dateValue);
-          if (date <= critical) {
-            row.getCell(colIndex).fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFFF0000' } // Red for critical
-            };
-          } else if (date <= warning) {
-            row.getCell(colIndex).fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFFF9900' } // Orange for warning
-            };
-          } else if (date <= notice) {
-            row.getCell(colIndex).fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFFFFF00' } // Yellow for notice
-            };
+    // Style level column for system logs
+    if (type === 'system') {
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 4) { // Skip header rows
+          const levelCell = row.getCell(2);
+          switch (levelCell.value?.toLowerCase()) {
+            case 'error':
+              levelCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFF0000' }
+              };
+              break;
+            case 'warn':
+              levelCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFF9900' }
+              };
+              break;
+            case 'info':
+              levelCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF00FF00' }
+              };
+              break;
           }
         }
       });
-    });
-
-    // Add legend
-    worksheet.addRow([]);
-    worksheet.addRow(['Color Legend']);
-    const legendRows = [
-      ['Critical (≤ 7 days)', 'FFFF0000'],
-      ['Warning (≤ 15 days)', 'FFFF9900'],
-      ['Notice (≤ 30 days)', 'FFFFFF00']
-    ];
-
-    legendRows.forEach(([text, color]) => {
-      const row = worksheet.addRow([text]);
-      row.getCell(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: color }
-      };
-    });
+    }
 
     const buffer = await workbook.xlsx.writeBuffer();
     const duration = Date.now() - startTime;
 
-    logger.info('Excel report generated successfully', {
+    logger.info(`Excel ${type} report generated successfully`, {
       size: buffer.length,
       duration,
-      assetCount: assets.length
+      count: data.length
     });
 
     await SystemLog.create({
       level: 'info',
-      message: 'Excel report generated',
+      message: `Excel ${type} report generated`,
       service: 'report-generator',
       metadata: {
         type: 'excel',
+        reportType: type,
         size: buffer.length,
         duration,
-        assetCount: assets.length
+        count: data.length
       }
     });
 
     return buffer;
   } catch (error) {
-    logger.error('Error generating Excel report', {
+    logger.error(`Error generating Excel ${type} report`, {
       error: error.message,
       stack: error.stack,
-      assetCount: assets.length
+      count: data.length
     });
 
     await SystemLog.create({
       level: 'error',
-      message: 'Error generating Excel report',
+      message: `Error generating Excel ${type} report`,
       service: 'report-generator',
       metadata: {
         type: 'excel',
+        reportType: type,
         error: error.message,
-        assetCount: assets.length
+        count: data.length
       },
       trace: error.stack
     });

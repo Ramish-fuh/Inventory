@@ -1,5 +1,5 @@
 import express from 'express';
-import { getLogs, getSystemLogs, getMetrics } from '../controllers/logController.js';
+import { getLogs, getSystemLogs, getMetrics, exportLogs } from '../controllers/logController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -15,5 +15,8 @@ router.get('/system', getSystemLogs);
 
 // Get performance metrics
 router.get('/metrics', getMetrics);
+
+// Export logs
+router.get('/export', exportLogs);
 
 export default router;

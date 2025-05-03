@@ -33,13 +33,41 @@ function AdminDashboard() {
   const [exportType, setExportType] = useState(null);
   const [activeTab, setActiveTab] = useState('assets');
 
+  const fetchAssets = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (categoryFilter) params.append('category', categoryFilter);
+      if (statusFilter) params.append('status', statusFilter);
+      if (assignedToFilter) params.append('assignedTo', assignedToFilter);
+
+      const response = await apiClient.get(`/api/assets?${params.toString()}`);
+      const assetData = Array.isArray(response.data) ? response.data : response.data.assets || [];
+      setAssets(assetData);
+      setDisplayedAssets(assetData);
+    } catch (error) {
+      console.error('Error fetching assets:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+      }
+      setError('Failed to load assets. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAssets();
-  }, []);
+  }, [searchQuery, categoryFilter, statusFilter, assignedToFilter]);
 
-  // Handle search and sort whenever the criteria change
+  // Handle filtering and sorting
   useEffect(() => {
-    if (!Array.isArray(assets)) return;
+    if (!Array.isArray(assets)) {
+      console.error('Assets is not an array:', assets);
+      return;
+    }
     
     let filtered = [...assets];
 
@@ -47,10 +75,10 @@ function AdminDashboard() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(asset =>
-        (asset.name || '').toLowerCase().includes(query) ||
-        (asset.category || '').toLowerCase().includes(query) ||
-        (asset.assignedTo?.toLowerCase() || '').includes(query) ||
-        (asset.location || '').toLowerCase().includes(query)
+        (asset.name?.toLowerCase().includes(query)) ||
+        (asset.category?.toLowerCase().includes(query)) ||
+        (asset.location?.toLowerCase().includes(query)) ||
+        (asset.serialNumber?.toLowerCase().includes(query))
       );
     }
 
@@ -64,14 +92,6 @@ function AdminDashboard() {
       filtered = filtered.filter(asset => asset.status === statusFilter);
     }
 
-    // Apply assigned to filter
-    if (assignedToFilter) {
-      filtered = filtered.filter(asset => 
-        asset.assignedTo?.fullName?.toLowerCase().includes(assignedToFilter.toLowerCase()) ||
-        asset.assignedTo?.username?.toLowerCase().includes(assignedToFilter.toLowerCase())
-      );
-    }
-
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue = a[sortBy];
@@ -81,55 +101,19 @@ function AdminDashboard() {
       if (aValue === null || aValue === undefined) return sortOrder === 'asc' ? -1 : 1;
       if (bValue === null || bValue === undefined) return sortOrder === 'asc' ? 1 : -1;
 
-      // Convert to strings for string comparison
+      // Convert to strings for comparison
       if (typeof aValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
 
-      // Handle numeric values
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-
-      // String comparison
       if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
 
     setDisplayedAssets(filtered);
-  }, [searchQuery, categoryFilter, statusFilter, assignedToFilter, sortBy, sortOrder, assets]);
-
-  const fetchAssets = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
-      if (categoryFilter) params.append('category', categoryFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (assignedToFilter) params.append('assignedTo', assignedToFilter);
-
-      const response = await apiClient.get(`/api/assets?${params.toString()}`);
-      
-      // Handle the paginated response correctly
-      if (response.data && Array.isArray(response.data.assets)) {
-        setAssets(response.data.assets);
-        setDisplayedAssets(response.data.assets);
-      } else {
-        throw new Error('Invalid data format: Expected assets array in response');
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching assets:', error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userRole');
-        navigate('/login');
-      }
-      setError('Failed to load assets. Please try again later.');
-      setLoading(false);
-    }
-  };
+  }, [assets, searchQuery, categoryFilter, statusFilter, sortBy, sortOrder]);
 
   const handleDelete = async (assetId) => {
     if (window.confirm('Are you sure you want to delete this asset?')) {
