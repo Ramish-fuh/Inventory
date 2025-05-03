@@ -137,41 +137,33 @@ export const createUser = async (req, res) => {
   }
 };
 
-// Get all users
+// Get all users with pagination
 export const getUsers = async (req, res) => {
   try {
-    logger.info('Fetching all users', {
-      requesterId: req.user._id,
-      requesterRole: req.user.role
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalUsers = await User.countDocuments();
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    const users = await User.find()
+      .select('-password')  // Exclude password field
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    res.json({
+      users,
+      pagination: {
+        page,
+        pages: totalPages,
+        total: totalUsers
+      }
     });
-
-    // Only allow admins to get user list
-    if (req.user.role !== 'Admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    const users = await User.find().select('-passwordHash');
-
-    await SystemLog.create({
-      level: 'info',
-      message: 'Users list fetched',
-      service: 'user-service',
-      metadata: {
-        requesterId: req.user._id,
-        userCount: users.length
-      },
-      user: req.user._id
-    });
-
-    logger.info('Users fetched successfully', {
-      count: users.length,
-      requesterId: req.user._id
-    });
-
-    res.json(users);
   } catch (error) {
-    logger.error('Error getting users:', error);
-    res.status(500).json({ message: 'Server Error' });
+    logger.error('Error in getUsers:', error);
+    res.status(500).json({ message: 'Error fetching users' });
   }
 };
 
@@ -426,5 +418,30 @@ export const searchUsers = async (req, res) => {
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllUsers = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalUsers = await User.countDocuments();
+    const users = await User.find()
+      .skip(skip)
+      .limit(limit)
+      .select('-password');
+
+    res.json({
+      users,
+      pagination: {
+        page,
+        pages: Math.ceil(totalUsers / limit),
+        total: totalUsers
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching users', error: error.message });
   }
 };

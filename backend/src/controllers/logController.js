@@ -15,14 +15,16 @@ export const createLog = async (req, res) => {
 // Get all log entries
 export const getLogs = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 25;
+    const skip = (page - 1) * pageSize;
+
     const {
       startDate,
       endDate,
       category,
       action,
-      user,
-      limit = 100,
-      page = 1
+      user
     } = req.query;
 
     logger.info('Fetching activity logs', {
@@ -44,13 +46,11 @@ export const getLogs = async (req, res) => {
     if (action) query.action = action;
     if (user) query.user = user;
 
-    const skip = (page - 1) * limit;
-
     const logs = await Log.find(query)
       .populate('user', 'username fullName')
       .sort({ timestamp: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(pageSize);
 
     const total = await Log.countDocuments(query);
 
@@ -64,8 +64,9 @@ export const getLogs = async (req, res) => {
       logs,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / limit)
+        page,
+        pageSize,
+        pages: Math.ceil(total / pageSize)
       }
     });
   } catch (error) {
@@ -123,13 +124,15 @@ export const deleteLog = async (req, res) => {
 
 export const getSystemLogs = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 25;
+    const skip = (page - 1) * pageSize;
+
     const {
       startDate,
       endDate,
       level,
-      service,
-      limit = 100,
-      page = 1
+      service
     } = req.query;
 
     logger.info('Fetching system logs', {
@@ -150,13 +153,11 @@ export const getSystemLogs = async (req, res) => {
     if (level) query.level = level;
     if (service) query.service = service;
 
-    const skip = (page - 1) * limit;
-
     const logs = await SystemLog.find(query)
       .populate('user', 'username fullName')
       .sort({ timestamp: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(pageSize);
 
     const total = await SystemLog.countDocuments(query);
 
@@ -170,8 +171,9 @@ export const getSystemLogs = async (req, res) => {
       logs,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / limit)
+        page,
+        pageSize,
+        pages: Math.ceil(total / pageSize)
       }
     });
   } catch (error) {

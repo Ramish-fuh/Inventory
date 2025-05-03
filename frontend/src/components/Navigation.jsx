@@ -39,6 +39,12 @@ function Navigation() {
             >
               User Management
             </Link>
+            <Link 
+              to="/logs" 
+              className={`${styles.navLink} ${location.pathname === '/logs' ? styles.active : ''}`}
+            >
+              Logs
+            </Link>
           </>
         ) : (
           <Link 

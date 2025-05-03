@@ -11,6 +11,7 @@ import ResetPassword from './components/ResetPassword';
 import Navigation from './components/Navigation';
 import UserManagement from './components/UserManagement';
 import QRScanner from './components/QRScanner';
+import LogViewer from './components/LogViewer';
 
 function App() {
   const token = localStorage.getItem('token');
@@ -42,6 +43,12 @@ function App() {
           <Route
             path="/admin-dashboard"
             element={<PrivateRoute element={<AdminDashboard />} role="Admin" />}
+          />
+
+          {/* Protect logs with PrivateRoute */}
+          <Route
+            path="/logs"
+            element={<PrivateRoute element={<LogViewer />} role="Admin" />}
           />
 
           {/* Protect user-management with PrivateRoute */}

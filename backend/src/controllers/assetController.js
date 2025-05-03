@@ -11,97 +11,40 @@ import { createNotification } from '../helpers/notificationHelper.js';
 // Get all assets with filtering and search
 export const getAssets = async (req, res) => {
   try {
-    logger.info('Fetching all assets', { 
-      userId: req.user?._id,
-      userRole: req.user?.role,
-      query: req.query 
-    });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
 
-    const { search, category, status, assignedTo } = req.query;
-    const query = {};
-
-    // Search by name, description, or serial number
+    let query = {};
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { serialNumber: { $regex: search, $options: 'i' } }
-      ];
+        query = {
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+                { serialNumber: { $regex: search, $options: 'i' } }
+            ]
+        };
     }
 
-    // Filter by category
-    if (category) {
-      query.category = category;
-    }
-
-    // Filter by status
-    if (status) {
-      query.status = status;
-    }
-
-    // If it's a regular user, only show their assigned assets
-    if (req.user.role === 'User') {
-      query.assignedTo = new mongoose.Types.ObjectId(req.user._id);
-      logger.info('Filtering assets for user:', {
-        userId: req.user._id,
-        role: req.user.role,
-        query
-      });
-    }
-
-    // Filter by assigned user (for admin searches)
-    if (assignedTo && req.user.role === 'Admin') {
-      const user = await User.findOne({
-        $or: [
-          { username: { $regex: assignedTo, $options: 'i' } },
-          { fullName: { $regex: assignedTo, $options: 'i' } }
-        ]
-      });
-
-      if (user) {
-        query.assignedTo = user._id;
-      } else {
-        logger.warn('No user found for assignedTo filter:', { assignedTo });
-        return res.json([]);
-      }
-    }
+    const totalAssets = await Asset.countDocuments(query);
+    const totalPages = Math.ceil(totalAssets / limit);
 
     const assets = await Asset.find(query)
-      .populate({
-        path: 'assignedTo',
-        select: 'username fullName email'
-      })
-      .sort({ createdAt: -1 });
+        .skip(skip)
+        .limit(limit)
+        .sort({ updatedAt: -1 });
 
-    logger.info('Assets fetched successfully', {
-      count: assets.length,
-      userId: req.user?._id,
-      query,
-      userRole: req.user?.role,
-      assets: assets.map(a => ({
-        id: a._id,
-        name: a.name,
-        assignedTo: a.assignedTo?._id
-      }))
+    res.json({
+        assets,
+        currentPage: page,
+        totalPages,
+        totalItems: totalAssets,
+        itemsPerPage: limit
     });
-
-    res.json(assets);
   } catch (error) {
-    logger.error('Error fetching assets', {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?._id,
-      query: req.query
-    });
-
-    await SystemLog.create({
-      level: 'error',
-      message: `Failed to fetch assets: ${error.message}`,
-      service: 'asset-service',
-      trace: error.stack,
-      user: req.user?._id
-    });
-
-    res.status(500).json({ message: 'Error getting assets' });
+    logger.error('Error in getAssets:', error);
+    res.status(500).json({ message: 'Error fetching assets' });
   }
 };
 
@@ -662,5 +605,40 @@ export const checkAssignedAssets = async (req, res) => {
       stack: error.stack
     });
     res.status(500).json({ message: 'Error checking assigned assets' });
+  }
+};
+
+export const getAllAssets = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (req.query.search) {
+      query.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { assetTag: { $regex: req.query.search, $options: 'i' } },
+        { category: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+    if (req.query.status) query.status = req.query.status;
+    if (req.query.category) query.category = req.query.category;
+
+    const totalAssets = await Asset.countDocuments(query);
+    const assets = await Asset.find(query)
+      .populate('assignedTo', 'username fullName')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      assets,
+      currentPage: page,
+      totalPages: Math.ceil(totalAssets / limit),
+      totalItems: totalAssets
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Button, Grid, Dialog } from '@mui/material';
+import { Card, CardContent, Typography, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Button, Grid, Dialog, Box, Tabs, Tab, Paper } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import EditIcon from '@mui/icons-material/Edit';
@@ -12,6 +12,8 @@ import styles from './Dashboard.module.css';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import AddAssetModal from './AddAssetModal';
 import ExportInfoModal from './ExportInfoModal';
+import UserManagement from './UserManagement';
+import LogViewer from './LogViewer';
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -29,15 +31,16 @@ function AdminDashboard() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteModalAsset, setDeleteModalAsset] = useState(null);
   const [exportType, setExportType] = useState(null);
+  const [activeTab, setActiveTab] = useState('assets');
 
   useEffect(() => {
     apiClient.get('/api/assets')
       .then(response => {
-        if (Array.isArray(response.data)) {
-          setAssets(response.data);
-          setDisplayedAssets(response.data);
+        if (response.data && Array.isArray(response.data.assets)) {
+          setAssets(response.data.assets);
+          setDisplayedAssets(response.data.assets);
         } else {
-          throw new Error('Invalid data format: Expected an array');
+          throw new Error('Invalid data format: Expected assets array in response');
         }
         setLoading(false);
       })
@@ -308,6 +311,10 @@ function AdminDashboard() {
     );
   };
 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   if (loading) {
     return <div className={styles.loading}>Loading...</div>;
   }
@@ -317,198 +324,221 @@ function AdminDashboard() {
   }
 
   return (
-    <div className={styles.dashboardContainer}>
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <h1>Admin Dashboard</h1>
-          <p className={styles.subtitle}>Manage your inventory assets</p>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setIsAddModalOpen(true)}
-              style={{ marginRight: '8px' }}
-            >
-              Add Asset
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<FileDownloadIcon />}
-              onClick={() => handleExportClick('pdf')}
-              style={{ marginRight: '8px' }}
-            >
-              Export PDF
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<FileDownloadIcon />}
-              onClick={() => handleExportClick('excel')}
-            >
-              Export Excel
-            </Button>
-          </div>
-        </div>
-      </header>
+    <Box sx={{ width: '100%' }}>
+      <Paper sx={{ width: '100%', mb: 2 }}>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          indicatorColor="primary"
+          textColor="primary"
+        >
+          <Tab value="assets" label="Asset Management" />
+          <Tab value="users" label="User Management" />
+          <Tab value="logs" label="System Logs" />
+        </Tabs>
+      </Paper>
 
-      <main className={styles.mainContent}>
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <h3>Total Assets</h3>
-            <p className={styles.statNumber}>{assets.length}</p>
-          </div>
-
-          <div className={styles.statCard}>
-            <h3>Active Assets</h3>
-            <p className={styles.statNumber}>
-              {assets.filter(asset => asset.status === 'In Use').length}
-            </p>
-          </div>
-
-          <div className={styles.statCard}>
-            <h3>Available Assets</h3>
-            <p className={styles.statNumber}>
-              {assets.filter(asset => asset.status === 'Available').length}
-            </p>
-          </div>
-        </div>
-
-        <section className={styles.assetsSection}>
-          <div className={styles.controls}>
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-              <Grid size={{ xs: 12, lg: 3 }}>
-                <TextField
-                  fullWidth
-                  label="Search assets"
-                  variant="outlined"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, lg: 3 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    value={categoryFilter}
-                    label="Category"
-                    onChange={(e) => setCategoryFilter(e.target.value)}
+      {activeTab === 'assets' && (
+        <Box p={3}>
+          <div className={styles.dashboardContainer}>
+            <header className={styles.header}>
+              <div className={styles.headerContent}>
+                <h1>Admin Dashboard</h1>
+                <p className={styles.subtitle}>Manage your inventory assets</p>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => setIsAddModalOpen(true)}
+                    style={{ marginRight: '8px' }}
                   >
-                    <MenuItem value="">All</MenuItem>
-                    <MenuItem value="Laptop">Laptop</MenuItem>
-                    <MenuItem value="Desktop">Desktop</MenuItem>
-                    <MenuItem value="Server">Server</MenuItem>
-                    <MenuItem value="Mobile">Mobile</MenuItem>
-                    <MenuItem value="Software">Software</MenuItem>
-                    <MenuItem value="Other">Other</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, lg: 3 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={statusFilter}
-                    label="Status"
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    Add Asset
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<FileDownloadIcon />}
+                    onClick={() => handleExportClick('pdf')}
+                    style={{ marginRight: '8px' }}
                   >
-                    <MenuItem value="">All</MenuItem>
-                    <MenuItem value="Available">Available</MenuItem>
-                    <MenuItem value="In Use">In Use</MenuItem>
-                    <MenuItem value="Maintenance">Maintenance</MenuItem>
-                    <MenuItem value="Retired">Retired</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, lg: 3 }}>
-                <TextField
-                  fullWidth
-                  label="Assigned To"
-                  variant="outlined"
-                  value={assignedToFilter}
-                  onChange={(e) => setAssignedToFilter(e.target.value)}
-                  placeholder="Search by user name"
+                    Export PDF
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<FileDownloadIcon />}
+                    onClick={() => handleExportClick('excel')}
+                  >
+                    Export Excel
+                  </Button>
+                </div>
+              </div>
+            </header>
+
+            <main className={styles.mainContent}>
+              <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <h3>Total Assets</h3>
+                  <p className={styles.statNumber}>{assets.length}</p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Active Assets</h3>
+                  <p className={styles.statNumber}>
+                    {assets.filter(asset => asset.status === 'In Use').length}
+                  </p>
+                </div>
+
+                <div className={styles.statCard}>
+                  <h3>Available Assets</h3>
+                  <p className={styles.statNumber}>
+                    {assets.filter(asset => asset.status === 'Available').length}
+                  </p>
+                </div>
+              </div>
+
+              <section className={styles.assetsSection}>
+                <div className={styles.controls}>
+                  <Grid container spacing={3} sx={{ mb: 3 }}>
+                    <Grid size={{ xs: 12, lg: 3 }}>
+                      <TextField
+                        fullWidth
+                        label="Search assets"
+                        variant="outlined"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, lg: 3 }}>
+                      <FormControl fullWidth>
+                        <InputLabel>Category</InputLabel>
+                        <Select
+                          value={categoryFilter}
+                          label="Category"
+                          onChange={(e) => setCategoryFilter(e.target.value)}
+                        >
+                          <MenuItem value="">All</MenuItem>
+                          <MenuItem value="Laptop">Laptop</MenuItem>
+                          <MenuItem value="Desktop">Desktop</MenuItem>
+                          <MenuItem value="Server">Server</MenuItem>
+                          <MenuItem value="Mobile">Mobile</MenuItem>
+                          <MenuItem value="Software">Software</MenuItem>
+                          <MenuItem value="Other">Other</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid size={{ xs: 12, lg: 3 }}>
+                      <FormControl fullWidth>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                          value={statusFilter}
+                          label="Status"
+                          onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                          <MenuItem value="">All</MenuItem>
+                          <MenuItem value="Available">Available</MenuItem>
+                          <MenuItem value="In Use">In Use</MenuItem>
+                          <MenuItem value="Maintenance">Maintenance</MenuItem>
+                          <MenuItem value="Retired">Retired</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid size={{ xs: 12, lg: 3 }}>
+                      <TextField
+                        fullWidth
+                        label="Assigned To"
+                        variant="outlined"
+                        value={assignedToFilter}
+                        onChange={(e) => setAssignedToFilter(e.target.value)}
+                        placeholder="Search by user name"
+                      />
+                    </Grid>
+                  </Grid>
+                </div>
+
+                <Grid container spacing={3}>
+                  {displayedAssets.map(asset => (
+                    <Grid size={{ xs: 12, lg: 6, xl: 4 }} key={asset._id}>
+                      <Card
+                        className={styles.assetCard}
+                        style={{ margin: 0, padding: 0 }}
+                      >
+                        <CardContent style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Typography variant="h5" className={styles.assetName}>
+                            {asset.name}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
+                            {asset.category}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
+                            Status: {asset.status}
+                          </Typography>
+                          {asset.assignedTo && (
+                            <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
+                              Assigned to: {typeof asset.assignedTo === 'object' ? asset.assignedTo.fullName || asset.assignedTo.username : asset.assignedTo}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
+                            Serial: {asset.serialNumber}
+                          </Typography>
+                          {renderActionButtons(asset)}
+                          <Link
+                            to={`/assets/${asset._id}`}
+                            className={styles.viewDetailsLink}
+                            style={{ marginTop: 'auto' }}
+                          >
+                            View Details
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </section>
+            </main>
+
+            {/* Modals */}
+            <AddAssetModal
+              open={isAddModalOpen}
+              onClose={() => setIsAddModalOpen(false)}
+              onAssetAdded={(newAsset) => {
+                fetchAssets();
+              }}
+            />
+
+            <DeleteConfirmationModal
+              open={!!deleteModalAsset}
+              onClose={() => setDeleteModalAsset(null)}
+              onConfirm={handleDeleteConfirm}
+              asset={deleteModalAsset}
+            />
+
+            {editingAsset && (
+              <Dialog open={true} onClose={() => setEditingAsset(null)} maxWidth="md" fullWidth>
+                <EditAssetForm
+                  asset={editingAsset}
+                  onClose={() => setEditingAsset(null)}
+                  onUpdate={(updatedAsset) => {
+                    setEditingAsset(null);
+                    fetchAssets();
+                  }}
                 />
-              </Grid>
-            </Grid>
+              </Dialog>
+            )}
+
+            {/* Add ExportInfoModal */}
+            <ExportInfoModal
+              open={!!exportType}
+              onClose={() => setExportType(null)}
+              type={exportType}
+              onConfirm={handleConfirmExport}
+            />
           </div>
-
-          <Grid container spacing={3}>
-            {displayedAssets.map(asset => (
-              <Grid size={{ xs: 12, lg: 6, xl: 4 }} key={asset._id}>
-                <Card
-                  className={styles.assetCard}
-                  style={{ margin: 0, padding: 0 }}
-                >
-                  <CardContent style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <Typography variant="h5" className={styles.assetName}>
-                      {asset.name}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
-                      {asset.category}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
-                      Status: {asset.status}
-                    </Typography>
-                    {asset.assignedTo && (
-                      <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
-                        Assigned to: {typeof asset.assignedTo === 'object' ? asset.assignedTo.fullName || asset.assignedTo.username : asset.assignedTo}
-                      </Typography>
-                    )}
-                    <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
-                      Serial: {asset.serialNumber}
-                    </Typography>
-                    {renderActionButtons(asset)}
-                    <Link
-                      to={`/assets/${asset._id}`}
-                      className={styles.viewDetailsLink}
-                      style={{ marginTop: 'auto' }}
-                    >
-                      View Details
-                    </Link>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </section>
-      </main>
-
-      {/* Modals */}
-      <AddAssetModal
-        open={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAssetAdded={(newAsset) => {
-          fetchAssets();
-        }}
-      />
-
-      <DeleteConfirmationModal
-        open={!!deleteModalAsset}
-        onClose={() => setDeleteModalAsset(null)}
-        onConfirm={handleDeleteConfirm}
-        asset={deleteModalAsset}
-      />
-
-      {editingAsset && (
-        <Dialog open={true} onClose={() => setEditingAsset(null)} maxWidth="md" fullWidth>
-          <EditAssetForm
-            asset={editingAsset}
-            onClose={() => setEditingAsset(null)}
-            onUpdate={(updatedAsset) => {
-              setEditingAsset(null);
-              fetchAssets();
-            }}
-          />
-        </Dialog>
+        </Box>
       )}
 
-      {/* Add ExportInfoModal */}
-      <ExportInfoModal
-        open={!!exportType}
-        onClose={() => setExportType(null)}
-        type={exportType}
-        onConfirm={handleConfirmExport}
-      />
-    </div>
+      {activeTab === 'users' && <UserManagement />}
+      
+      {activeTab === 'logs' && <LogViewer />}
+    </Box>
   );
 }
 

@@ -16,7 +16,9 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel
+  InputLabel,
+  Box,
+  Pagination
 } from '@mui/material';
 import apiClient from '../index';
 import styles from './Dashboard.module.css';
@@ -25,6 +27,10 @@ function UserManagement() {
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
     fullName: '',
@@ -34,16 +40,37 @@ function UserManagement() {
   });
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(currentPage);
+  }, [currentPage]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page) => {
     try {
-      const response = await apiClient.get('/api/users');
-      setUsers(response.data);
+      setLoading(true);
+      const response = await apiClient.get('/api/users', {
+        params: {
+          page: page,
+          limit: itemsPerPage
+        }
+      });
+      
+      if (response.data && Array.isArray(response.data.users)) {
+        setUsers(response.data.users);
+        setTotalPages(Math.ceil(response.data.total / itemsPerPage));
+      } else {
+        setUsers([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage);
   };
 
   const handleOpen = (user = null) => {
@@ -132,127 +159,142 @@ function UserManagement() {
       </header>
 
       <main className={styles.mainContent}>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Username</TableCell>
-                <TableCell>Full Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user._id}>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.fullName}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>
-                    <Button 
-                      color="primary" 
-                      onClick={() => handleOpen(user)}
-                      style={{ marginRight: '8px' }}
-                    >
-                      Edit
-                    </Button>
-                    <Button 
-                      color="error" 
-                      onClick={() => handleDelete(user._id)}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {loading ? (
+          <div>Loading...</div>
+        ) : (
+          <>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Username</TableCell>
+                    <TableCell>Full Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user._id}>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.fullName}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.role}</TableCell>
+                      <TableCell>
+                        <Button 
+                          color="primary" 
+                          onClick={() => handleOpen(user)}
+                          style={{ marginRight: '8px' }}
+                        >
+                          Edit
+                        </Button>
+                        <Button 
+                          color="error" 
+                          onClick={() => handleDelete(user._id)}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-        <Dialog open={open} onClose={handleClose}>
-          <DialogTitle>{selectedUser ? 'Edit User' : 'Add New User'}</DialogTitle>
-          <form onSubmit={handleSubmit}>
-            <DialogContent>
-              <TextField
-                autoFocus
-                margin="dense"
-                name="username"
-                label="Username"
-                type="text"
-                fullWidth
-                value={formData.username}
-                onChange={handleChange}
-                required
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2 }}>
+              <Pagination 
+                count={totalPages} 
+                page={currentPage} 
+                onChange={handlePageChange}
+                color="primary"
               />
-              <TextField
-                margin="dense"
-                name="fullName"
-                label="Full Name"
-                type="text"
-                fullWidth
-                value={formData.fullName}
-                onChange={handleChange}
-                required
-              />
-              <TextField
-                margin="dense"
-                name="email"
-                label="Email"
-                type="email"
-                fullWidth
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-              <FormControl fullWidth margin="dense">
-                <InputLabel>Role</InputLabel>
-                <Select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  required
-                >
-                  <MenuItem value="Admin">Admin</MenuItem>
-                  <MenuItem value="Technician">Technician</MenuItem>
-                  <MenuItem value="User">User</MenuItem>
-                </Select>
-              </FormControl>
-              {/* Show password field only when creating new user */}
-              {!selectedUser && (
-                <TextField
-                  margin="dense"
-                  name="password"
-                  label="Password"
-                  type="password"
-                  fullWidth
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                />
-              )}
-              {/* Optional password field for editing */}
-              {selectedUser && (
-                <TextField
-                  margin="dense"
-                  name="password"
-                  label="New Password (leave blank to keep current)"
-                  type="password"
-                  fullWidth
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleClose}>Cancel</Button>
-              <Button type="submit" color="primary">
-                {selectedUser ? 'Save' : 'Create'}
-              </Button>
-            </DialogActions>
-          </form>
-        </Dialog>
+            </Box>
+
+            <Dialog open={open} onClose={handleClose}>
+              <DialogTitle>{selectedUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+              <form onSubmit={handleSubmit}>
+                <DialogContent>
+                  <TextField
+                    autoFocus
+                    margin="dense"
+                    name="username"
+                    label="Username"
+                    type="text"
+                    fullWidth
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                  />
+                  <TextField
+                    margin="dense"
+                    name="fullName"
+                    label="Full Name"
+                    type="text"
+                    fullWidth
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    required
+                  />
+                  <TextField
+                    margin="dense"
+                    name="email"
+                    label="Email"
+                    type="email"
+                    fullWidth
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel>Role</InputLabel>
+                    <Select
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      required
+                    >
+                      <MenuItem value="Admin">Admin</MenuItem>
+                      <MenuItem value="Technician">Technician</MenuItem>
+                      <MenuItem value="User">User</MenuItem>
+                    </Select>
+                  </FormControl>
+                  {/* Show password field only when creating new user */}
+                  {!selectedUser && (
+                    <TextField
+                      margin="dense"
+                      name="password"
+                      label="Password"
+                      type="password"
+                      fullWidth
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                    />
+                  )}
+                  {/* Optional password field for editing */}
+                  {selectedUser && (
+                    <TextField
+                      margin="dense"
+                      name="password"
+                      label="New Password (leave blank to keep current)"
+                      type="password"
+                      fullWidth
+                      value={formData.password}
+                      onChange={handleChange}
+                    />
+                  )}
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleClose}>Cancel</Button>
+                  <Button type="submit" color="primary">
+                    {selectedUser ? 'Save' : 'Create'}
+                  </Button>
+                </DialogActions>
+              </form>
+            </Dialog>
+          </>
+        )}
       </main>
     </div>
   );

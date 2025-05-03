@@ -12,6 +12,10 @@ function AssetView() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const userRole = localStorage.getItem('userRole');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (!id) {
@@ -66,6 +70,27 @@ function AssetView() {
       );
     }
     return null;
+  };
+
+  const fetchAssets = async (page = currentPage) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/assets?page=${page}&limit=${itemsPerPage}`);
+      const data = await response.json();
+      setAssets(data.assets);
+      setTotalPages(data.totalPages);
+      setCurrentPage(data.currentPage);
+      setTotalItems(data.totalItems);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchAssets(page);
   };
 
   if (loading) {
@@ -140,6 +165,23 @@ function AssetView() {
           </div>
         )}
       </main>
+
+      <div className="pagination">
+        <button 
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </button>
+        <span>Page {currentPage} of {totalPages}</span>
+        <button 
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </button>
+        <span>Total items: {totalItems}</span>
+      </div>
     </div>
   );
 }
