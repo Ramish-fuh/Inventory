@@ -33,6 +33,7 @@ export const getLogs = async (req, res) => {
       query: req.query
     });
 
+    // Build query using lean() for better performance
     const query = {};
 
     if (startDate || endDate) {
@@ -50,13 +51,16 @@ export const getLogs = async (req, res) => {
     if (action) query.action = action;
     if (user) query.user = user;
 
-    const logs = await Log.find(query)
-      .populate('user', 'username fullName')
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(pageSize);
-
-    const total = await Log.countDocuments(query);
+    // Use Promise.all to run count and find in parallel
+    const [logs, total] = await Promise.all([
+      Log.find(query)
+        .populate('user', 'username fullName')
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .lean(),
+      Log.countDocuments(query)
+    ]);
 
     logger.info('Activity logs fetched successfully', {
       requesterId: req.user._id,
@@ -79,7 +83,6 @@ export const getLogs = async (req, res) => {
       stack: error.stack,
       requesterId: req.user._id
     });
-
     res.status(500).json({ message: 'Error fetching logs' });
   }
 };
@@ -144,9 +147,9 @@ export const getSystemLogs = async (req, res) => {
       query: req.query
     });
 
+    // Build query using lean() for better performance
     const query = {};
 
-    // Add date range filter using exact timestamps from query
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) {
@@ -161,13 +164,16 @@ export const getSystemLogs = async (req, res) => {
     if (level) query.level = level;
     if (service) query.service = service;
 
-    const logs = await SystemLog.find(query)
-      .populate('user', 'username fullName')
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(pageSize);
-
-    const total = await SystemLog.countDocuments(query);
+    // Use Promise.all to run count and find in parallel
+    const [logs, total] = await Promise.all([
+      SystemLog.find(query)
+        .populate('user', 'username fullName')
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .lean(),
+      SystemLog.countDocuments(query)
+    ]);
 
     logger.info('System logs fetched successfully', {
       requesterId: req.user._id,
@@ -190,8 +196,7 @@ export const getSystemLogs = async (req, res) => {
       stack: error.stack,
       requesterId: req.user._id
     });
-
-    res.status(500).json({ message: 'Error fetching system logs' });
+    res.status(500).json({ message: 'Error fetching logs' });
   }
 };
 

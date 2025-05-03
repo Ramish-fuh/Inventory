@@ -40,38 +40,61 @@ function Login() {
     e.preventDefault();
     setError('');
     setMessage('');
+    
     try {
+      // Clear any existing tokens first
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+
       const response = await apiClient.post('/api/auth/login', {
         username,
         password,
       });
 
-      const token = response.data.token;
+      const { token, user } = response.data;
+      
+      // Validate token exists and can be decoded
       if (!token) {
         throw new Error('No token received');
       }
 
-      localStorage.setItem('token', token);
-      
+      // Decode and validate token
       const decoded = decodeJWT(token);
-      if (!decoded || !decoded.role) {
+      if (!decoded || !decoded.id || !decoded.role || !decoded.exp) {
         throw new Error('Invalid token format');
       }
 
+      // Validate token expiration
+      const expirationTime = decoded.exp * 1000; // Convert to milliseconds
+      if (expirationTime <= Date.now()) {
+        throw new Error('Token is already expired');
+      }
+
+      // Store auth data only after all validation passes
+      localStorage.setItem('token', token);
       localStorage.setItem('userRole', decoded.role);
       localStorage.setItem('userId', decoded.id);
 
       // Navigate based on role
-      if (decoded.role === 'Admin') {
-        navigate('/admin-dashboard');
-      } else if (decoded.role === 'Technician') {
-        navigate('/technician-dashboard');
-      } else {
-        navigate('/user-dashboard');
+      switch (decoded.role) {
+        case 'Admin':
+          navigate('/admin-dashboard', { replace: true });
+          break;
+        case 'Technician':
+          navigate('/technician-dashboard', { replace: true });
+          break;
+        default:
+          navigate('/user-dashboard', { replace: true });
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.response?.data?.message || 'Invalid credentials. Please try again.');
+      setError(error.response?.data?.message || 'Login failed. Please try again.');
+      
+      // Clear any partial auth data on error
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
     }
   };
 

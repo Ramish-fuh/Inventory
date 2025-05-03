@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Table,
@@ -65,6 +65,8 @@ const LogViewer = () => {
     pages: 0
   });
 
+  const debounceTimer = useRef(null);
+
   const adjustDateToUTC = (date) => {
     if (!date) return null;
     const d = new Date(date);
@@ -80,83 +82,91 @@ const LogViewer = () => {
     ));
   };
 
-  const fetchLogs = async () => {
-    try {
-      setLoading(true);
-      
-      let adjustedStartDate = adjustDateToUTC(filters.startDate);
-      let adjustedEndDate = adjustDateToUTC(filters.endDate);
-
-      if (adjustedStartDate) {
-        adjustedStartDate.setUTCHours(0, 0, 0, 0);
-      }
-
-      if (adjustedEndDate) {
-        adjustedEndDate.setUTCHours(23, 59, 59, 999);
-      }
-
-      const queryParams = new URLSearchParams({
-        page: pagination.page,
-        limit: pagination.pageSize,
-        ...(adjustedStartDate && { startDate: adjustedStartDate.toISOString() }),
-        ...(adjustedEndDate && { endDate: adjustedEndDate.toISOString() }),
-        ...(filters.level && { level: filters.level }),
-        ...(filters.category && { category: filters.category }),
-        ...(filters.action && { action: filters.action }),
-        ...(filters.service && { service: filters.service })
-      });
-
-      const endpoint = activeTab === 'activity' ? 'activity' : 'system';
-      const response = await fetch(`/api/logs/${endpoint}?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch logs');
-      
-      const data = await response.json();
-      setLogs(data.logs);
-      setPagination({
-        ...pagination,
-        total: data.pagination.total,
-        pages: data.pagination.pages
-      });
-    } catch (error) {
-      console.error('Error fetching logs:', error);
-    } finally {
-      setLoading(false);
+  const debouncedFetchLogs = useCallback((newFilters) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
     }
-  };
+    
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        setLoading(true);
+        
+        let adjustedStartDate = adjustDateToUTC(newFilters.startDate);
+        let adjustedEndDate = adjustDateToUTC(newFilters.endDate);
+
+        if (adjustedStartDate) {
+          adjustedStartDate.setUTCHours(0, 0, 0, 0);
+        }
+
+        if (adjustedEndDate) {
+          adjustedEndDate.setUTCHours(23, 59, 59, 999);
+        }
+
+        const queryParams = new URLSearchParams({
+          page: pagination.page.toString(),
+          limit: pagination.pageSize.toString(),
+          ...(adjustedStartDate && { startDate: adjustedStartDate.toISOString() }),
+          ...(adjustedEndDate && { endDate: adjustedEndDate.toISOString() }),
+          ...(newFilters.level && { level: newFilters.level }),
+          ...(newFilters.category && { category: newFilters.category }),
+          ...(newFilters.action && { action: newFilters.action }),
+          ...(newFilters.service && { service: newFilters.service })
+        });
+
+        const endpoint = activeTab === 'activity' ? 'activity' : 'system';
+        const response = await apiClient.get(`/api/logs/${endpoint}?${queryParams}`);
+        
+        setLogs(response.data.logs);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination.total,
+          pages: response.data.pagination.pages
+        }));
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, 500); // 500ms debounce
+  }, [activeTab, pagination.page, pagination.pageSize]);
 
   useEffect(() => {
-    fetchLogs();
-  }, [activeTab, pagination.page, pagination.pageSize, filters]);
+    debouncedFetchLogs(filters);
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [debouncedFetchLogs, filters]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setPagination({ ...pagination, page: 1 });
-    setFilters({
+    setPagination(prev => ({ ...prev, page: 1 }));
+    const newFilters = {
       startDate: null,
       endDate: null,
       level: '',
       category: '',
       action: '',
       service: ''
-    });
+    };
+    setFilters(newFilters);
+    debouncedFetchLogs(newFilters);
   };
 
   const handlePageChange = (event, newPage) => {
-    setPagination({ ...pagination, page: newPage });
+    setPagination(prev => ({ ...prev, page: newPage }));
     window.scrollTo(0, 0);
+    debouncedFetchLogs(filters);
   };
 
   const handlePageSizeChange = (event) => {
-    setPagination({
-      ...pagination,
+    setPagination(prev => ({
+      ...prev,
       pageSize: event.target.value,
       page: 1
-    });
+    }));
+    debouncedFetchLogs(filters);
   };
 
   const getLevelIcon = (level) => {
@@ -375,7 +385,7 @@ const LogViewer = () => {
         )}
         <Grid item xs={12} sm={6} md={3}>
           <IconButton 
-            onClick={() => fetchLogs()} 
+            onClick={() => debouncedFetchLogs(filters)} 
             color="primary"
             sx={{ mt: 1 }}
           >
