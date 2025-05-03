@@ -43,9 +43,16 @@ function Navigation() {
               to="/logs" 
               className={`${styles.navLink} ${location.pathname === '/logs' ? styles.active : ''}`}
             >
-              Logs
+              System Logs
             </Link>
           </>
+        ) : userRole === 'Technician' ? (
+          <Link 
+            to="/technician-dashboard" 
+            className={`${styles.navLink} ${location.pathname === '/technician-dashboard' ? styles.active : ''}`}
+          >
+            Dashboard
+          </Link>
         ) : (
           <Link 
             to="/user-dashboard" 
@@ -54,6 +61,12 @@ function Navigation() {
             Dashboard
           </Link>
         )}
+        <Link 
+          to="/scan" 
+          className={`${styles.navLink} ${location.pathname === '/scan' ? styles.active : ''}`}
+        >
+          QR Scanner
+        </Link>
       </div>
       <div className={styles.rightControls}>
         <ErrorBoundary fallback="Unable to load notifications">

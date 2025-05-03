@@ -17,33 +17,59 @@ export const getAssets = async (req, res) => {
     const search = req.query.search || '';
 
     let query = {};
+    
+    // Add search criteria
     if (search) {
-        query = {
-            $or: [
-                { name: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } },
-                { serialNumber: { $regex: search, $options: 'i' } }
-            ]
-        };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { serialNumber: { $regex: search, $options: 'i' } }
+      ];
     }
+
+    // Add assignedTo filter for non-admin users
+    if (req.user.role !== 'Admin' && req.query.assignedTo) {
+      query.assignedTo = new mongoose.Types.ObjectId(req.query.assignedTo);
+    }
+
+    // Add category filter if provided
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+
+    // Add status filter if provided
+    if (req.query.status) {
+      query.status = req.query.status;
+    }
+
+    logger.info('Asset query constructed:', {
+      userId: req.user._id,
+      role: req.user.role,
+      query: JSON.stringify(query)
+    });
 
     const totalAssets = await Asset.countDocuments(query);
     const totalPages = Math.ceil(totalAssets / limit);
 
     const assets = await Asset.find(query)
-        .skip(skip)
-        .limit(limit)
-        .sort({ updatedAt: -1 });
+      .populate('assignedTo', 'username fullName email')
+      .skip(skip)
+      .limit(limit)
+      .sort({ updatedAt: -1 });
 
     res.json({
-        assets,
-        currentPage: page,
-        totalPages,
-        totalItems: totalAssets,
-        itemsPerPage: limit
+      assets,
+      currentPage: page,
+      totalPages,
+      totalItems: totalAssets,
+      itemsPerPage: limit
     });
   } catch (error) {
-    logger.error('Error in getAssets:', error);
+    logger.error('Error in getAssets:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?._id
+    });
     res.status(500).json({ message: 'Error fetching assets' });
   }
 };

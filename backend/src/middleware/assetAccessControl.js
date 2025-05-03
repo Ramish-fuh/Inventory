@@ -41,6 +41,14 @@ export const assetAccessControl = async (req, res, next) => {
           return res.status(403).json({ message: 'Not authorized to view this asset' });
         }
       }
+      // Technicians can view any asset
+      else if (role === 'Technician') {
+        logger.info('Technician viewing asset details', {
+          userId: req.user._id,
+          assetId,
+          role
+        });
+      }
       return next();
     }
 
@@ -53,6 +61,12 @@ export const assetAccessControl = async (req, res, next) => {
           currentQuery: req.query
         });
         req.query.assignedTo = req.user._id;
+      } else if (role === 'Technician') {
+        // Technicians can see all assets
+        logger.info('Technician accessing all assets', {
+          userId: req.user._id,
+          currentQuery: req.query
+        });
       }
       return next();
     }
@@ -70,7 +84,7 @@ export const assetAccessControl = async (req, res, next) => {
         return res.status(403).json({ message: 'Only administrators can assign assets or set status to In Use' });
       }
       
-      // Only Technicians can update other properties
+      // Only Admins and Technicians can update other properties
       if (role === 'Technician') {
         return next();
       }
@@ -85,13 +99,22 @@ export const assetAccessControl = async (req, res, next) => {
     }
 
     // For POST/DELETE requests
-    if ((method === 'POST' || method === 'DELETE') && role !== 'Admin') {
-      logger.warn('Unauthorized asset operation attempt', {
+    if (method === 'DELETE') {
+      // Only admins can delete assets
+      logger.warn('Non-admin attempting to delete asset', {
+        userId: req.user._id,
+        role,
+        assetId
+      });
+      return res.status(403).json({ message: 'Only administrators can delete assets' });
+    } else if (method === 'POST') {
+      // Only admins can create assets
+      logger.warn('Non-admin attempting to create asset', {
         userId: req.user._id,
         method,
         role
       });
-      return res.status(403).json({ message: 'Not authorized to perform this operation' });
+      return res.status(403).json({ message: 'Only administrators can create new assets' });
     }
 
     next();

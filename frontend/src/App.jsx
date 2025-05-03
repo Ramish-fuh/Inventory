@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AdminDashboard from './components/AdminDashboard';
+import TechnicianDashboard from './components/TechnicianDashboard';
 import UserDashboard from './components/UserDashboard';
 import AssetView from './components/AssetView';
 import Login from './components/Login';
@@ -37,27 +38,33 @@ function App() {
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* QR Scanner Route */}
-          <Route path="/scan" element={<PrivateRoute element={<QRScanner />} role={userRole} />} />
+          <Route path="/scan" element={<PrivateRoute element={<QRScanner />} role={['Admin', 'Technician', 'User']} />} />
 
-          {/* Protect admin-dashboard with PrivateRoute */}
+          {/* Protected Admin Dashboard Route */}
           <Route
             path="/admin-dashboard"
             element={<PrivateRoute element={<AdminDashboard />} role="Admin" />}
           />
 
-          {/* Protect logs with PrivateRoute */}
+          {/* Protected Technician Dashboard Route */}
           <Route
-            path="/logs"
-            element={<PrivateRoute element={<LogViewer />} role="Admin" />}
+            path="/technician-dashboard"
+            element={<PrivateRoute element={<TechnicianDashboard />} role="Technician" />}
           />
 
-          {/* Protect user-management with PrivateRoute */}
+          {/* Protected User Management Route */}
           <Route
             path="/user-management"
             element={<PrivateRoute element={<UserManagement />} role="Admin" />}
           />
 
-          {/* Protect user-dashboard with PrivateRoute */}
+          {/* Protected Logs Route */}
+          <Route
+            path="/logs"
+            element={<PrivateRoute element={<LogViewer />} role="Admin" />}
+          />
+
+          {/* Protected User Dashboard Route */}
           <Route
             path="/user-dashboard"
             element={<PrivateRoute element={<UserDashboard />} role="User" />}
@@ -66,18 +73,20 @@ function App() {
           {/* Protected Asset View Route */}
           <Route
             path="/assets/:id"
-            element={<PrivateRoute element={<AssetView />} role={userRole} />}
+            element={<PrivateRoute element={<AssetView />} role={['Admin', 'Technician', 'User']} />}
           />
 
           {/* Default route - redirect to appropriate dashboard based on role */}
           <Route 
             path="/" 
             element={
-              decoded ? 
-                (decoded.role.toLowerCase() === 'admin' ? 
-                  <Navigate to="/admin-dashboard" /> : 
-                  <Navigate to="/user-dashboard" />
-                ) : 
+              decoded ? (
+                decoded.role === 'Admin' ? 
+                  <Navigate to="/admin-dashboard" /> :
+                  decoded.role === 'Technician' ?
+                    <Navigate to="/technician-dashboard" /> :
+                    <Navigate to="/user-dashboard" />
+              ) : 
                 <Navigate to="/login" />
             } 
           />

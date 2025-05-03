@@ -58,18 +58,27 @@ function AssetView() {
     }
   };
 
-  const renderEditButton = () => {
-    if (userRole === 'Admin' || userRole === 'Technician') {
-      return (
-        <button 
-          onClick={() => setIsEditing(true)}
-          className={styles.editButton}
-        >
-          Edit Asset
-        </button>
-      );
-    }
-    return null;
+  const renderActionButtons = () => {
+    return (
+      <div className={styles.actionButtons}>
+        {(userRole === 'Admin' || userRole === 'Technician') && (
+          <button 
+            onClick={() => setIsEditing(true)}
+            className={styles.editButton}
+          >
+            Edit Asset
+          </button>
+        )}
+        {userRole === 'Admin' && (
+          <button 
+            onClick={handleDelete}
+            className={`${styles.deleteButton} ${styles.dangerButton}`}
+          >
+            Delete Asset
+          </button>
+        )}
+      </div>
+    );
   };
 
   const fetchAssets = async (page = currentPage) => {
@@ -111,7 +120,7 @@ function AssetView() {
         <div className={styles.headerContent}>
           <h1>{asset.name}</h1>
           <p className={styles.subtitle}>Asset Details</p>
-          {renderEditButton()}
+          {renderActionButtons()}
         </div>
       </header>
 

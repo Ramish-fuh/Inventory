@@ -59,10 +59,16 @@ function Login() {
       }
 
       localStorage.setItem('userRole', decoded.role);
-      localStorage.setItem('userId', decoded.id); // Store the user ID
+      localStorage.setItem('userId', decoded.id);
 
-      // Use React Router navigation instead of window.location
-      navigate(decoded.role === 'Admin' ? '/admin-dashboard' : '/user-dashboard');
+      // Navigate based on role
+      if (decoded.role === 'Admin') {
+        navigate('/admin-dashboard');
+      } else if (decoded.role === 'Technician') {
+        navigate('/technician-dashboard');
+      } else {
+        navigate('/user-dashboard');
+      }
     } catch (error) {
       console.error('Login error:', error);
       setError(error.response?.data?.message || 'Invalid credentials. Please try again.');

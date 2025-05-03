@@ -334,9 +334,9 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               <Select
                 name="status"
                 value={formData.status}
-                onChange={(e) => handleChange(e)}
+                onChange={handleChange}
                 label="Status"
-                disabled={!isAdmin && formData.status === 'In Use'}
+                disabled={!isAdmin && (formData.status === 'In Use' || formData.status === 'Available')}
               >
                 <MenuItem value="Available">Available</MenuItem>
                 <MenuItem value="In Use" disabled={!isAdmin}>In Use</MenuItem>
@@ -348,6 +348,7 @@ const EditAssetForm = ({ asset, onClose, onUpdate }) => {
               )}
             </FormControl>
 
+            {/* Only show user assignment for admins */}
             {isAdmin && formData.status === 'In Use' && (
               <FormControl fullWidth error={!!errors.assignedTo}>
                 <Autocomplete
