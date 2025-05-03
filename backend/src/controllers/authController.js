@@ -6,6 +6,19 @@ import SystemLog from '../models/SystemLog.js';
 import logger from '../utils/logger.js';
 import crypto from 'crypto';
 import { sendEmail } from '../helpers/mailer.js';
+import rateLimit from 'express-rate-limit';
+import { isValidPassword } from '../utils/passwordValidator.js';
+
+// Create a rate limiter for admin setup
+const adminSetupLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3, // limit each IP to 3 requests per windowMs
+    message: 'Too many admin setup attempts, please try again later'
+});
+
+// Time window for allowing admin setup (2 hours after server start)
+const ADMIN_SETUP_WINDOW = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+const serverStartTime = Date.now();
 
 export const loginUser = async (req, res) => {
     const { username, password } = req.body;
@@ -278,10 +291,31 @@ export const setupInitialAdmin = async (req, res) => {
     });
 
     try {
+        // Check if we're outside the setup window
+        if (Date.now() - serverStartTime > ADMIN_SETUP_WINDOW) {
+            logger.warn('Admin setup attempted outside setup window', { ip: req.ip });
+            return res.status(403).json({ message: 'Admin setup is only allowed within 2 hours of server start' });
+        }
+
+        // Enforce HTTPS in production
+        if (process.env.NODE_ENV === 'production' && !req.secure) {
+            logger.warn('Admin setup attempted over non-HTTPS connection', { ip: req.ip });
+            return res.status(403).json({ message: 'HTTPS is required for admin setup' });
+        }
+
         // Check if we're in production and if initialization is allowed
         if (process.env.NODE_ENV === 'production' && process.env.ALLOW_ADMIN_SETUP !== 'true') {
             logger.warn('Attempted admin setup in production without authorization', { ip: req.ip });
             return res.status(403).json({ message: 'Admin setup is disabled in production' });
+        }
+
+        // Check IP whitelist in production
+        if (process.env.NODE_ENV === 'production') {
+            const allowedIPs = (process.env.ADMIN_SETUP_ALLOWED_IPS || '').split(',');
+            if (!allowedIPs.includes(req.ip)) {
+                logger.warn('Admin setup attempted from unauthorized IP', { ip: req.ip });
+                return res.status(403).json({ message: 'Unauthorized IP address' });
+            }
         }
 
         // Verify initialization token
@@ -300,8 +334,12 @@ export const setupInitialAdmin = async (req, res) => {
 
         // Validate provided password or use secure generated password
         const { password = crypto.randomBytes(16).toString('hex') } = req.body;
-        if (password.length < 12) {
-            return res.status(400).json({ message: 'Password must be at least 12 characters long' });
+        
+        // Enhanced password validation
+        if (!isValidPassword(password)) {
+            return res.status(400).json({ 
+                message: 'Password must be at least 12 characters long and contain uppercase, lowercase, numbers, and special characters' 
+            });
         }
 
         const salt = await bcrypt.genSalt(12); // Increased from 10 to 12 rounds
