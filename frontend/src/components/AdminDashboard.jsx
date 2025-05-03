@@ -420,7 +420,7 @@ function AdminDashboard() {
                     </Typography>
                     {asset.assignedTo && (
                       <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>
-                        Assigned to: {asset.assignedTo}
+                        Assigned to: {typeof asset.assignedTo === 'object' ? asset.assignedTo.fullName || asset.assignedTo.username : asset.assignedTo}
                       </Typography>
                     )}
                     <Typography variant="body2" color="textSecondary" style={{ marginBottom: '8px' }}>

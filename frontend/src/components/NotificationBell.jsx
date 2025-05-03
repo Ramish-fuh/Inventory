@@ -112,32 +112,31 @@ const NotificationBell = () => {
         ) : (
           notifications.map((notification, index) => {
             const { color, Icon } = getNotificationStyle(notification.type, notification.message);
-            return (
-              <React.Fragment key={notification._id}>
-                <MenuItem 
-                  onClick={() => handleNotificationClick(notification)}
-                  style={{ 
-                    backgroundColor: notification.read ? 'inherit' : 'rgba(0, 0, 0, 0.04)',
-                    padding: '12px 16px'
-                  }}
-                >
-                  <Icon style={{ marginRight: '12px', color }} />
-                  <ListItemText
-                    primary={
-                      <Typography 
-                        variant="subtitle2" 
-                        style={{ color }}
-                      >
-                        {notification.message}
-                      </Typography>
-                    }
-                    secondary={new Date(notification.createdAt).toLocaleString()}
-                  />
-                </MenuItem>
-                {index < notifications.length - 1 && <Divider />}
-              </React.Fragment>
-            );
-          })
+            return [
+              <MenuItem 
+                key={notification._id}
+                onClick={() => handleNotificationClick(notification)}
+                style={{ 
+                  backgroundColor: notification.read ? 'inherit' : 'rgba(0, 0, 0, 0.04)',
+                  padding: '12px 16px'
+                }}
+              >
+                <Icon style={{ marginRight: '12px', color }} />
+                <ListItemText
+                  primary={
+                    <Typography 
+                      variant="subtitle2" 
+                      style={{ color }}
+                    >
+                      {notification.message}
+                    </Typography>
+                  }
+                  secondary={new Date(notification.createdAt).toLocaleString()}
+                />
+              </MenuItem>,
+              index < notifications.length - 1 && <Divider key={`divider-${notification._id}`} />
+            ].filter(Boolean);
+          }).flat()
         )}
       </Menu>
     </>
