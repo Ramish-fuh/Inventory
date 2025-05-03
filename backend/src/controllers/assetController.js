@@ -56,6 +56,11 @@ export const getAssets = async (req, res) => {
       }
     }
 
+    // If it's a regular user, only show their assigned assets
+    if (req.user.role === 'User') {
+      query.assignedTo = req.user._id;
+    }
+
     const assets = await Asset.find(query)
       .populate('assignedTo', 'username fullName email')
       .sort({ createdAt: -1 });

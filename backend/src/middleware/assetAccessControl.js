@@ -19,7 +19,7 @@ export const assetAccessControl = async (req, res, next) => {
         return res.status(404).json({ message: 'Asset not found' });
       }
 
-      // Users can only view their assigned assets
+      // Regular users can only view their assigned assets
       if (role === 'User') {
         if (asset.assignedTo?.toString() !== req.user._id.toString()) {
           logger.warn('Unauthorized asset access attempt', {
@@ -35,7 +35,7 @@ export const assetAccessControl = async (req, res, next) => {
 
     // For GET requests on asset list
     if (method === 'GET') {
-      // Users can only see their assigned assets
+      // Regular users can only see their assigned assets
       if (role === 'User') {
         req.query.assignedTo = req.user._id;
       }
@@ -55,10 +55,13 @@ export const assetAccessControl = async (req, res, next) => {
         return res.status(403).json({ message: 'Only administrators can assign assets or set status to In Use' });
       }
       
-      // Technicians can update other properties
+      // Only Technicians can update other properties
       if (role === 'Technician') {
         return next();
       }
+
+      // Regular users cannot update assets
+      return res.status(403).json({ message: 'Not authorized to update assets' });
     }
 
     // For POST/DELETE requests

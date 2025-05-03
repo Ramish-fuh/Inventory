@@ -29,7 +29,7 @@ function UserManagement() {
     username: '',
     fullName: '',
     email: '',
-    role: 'Viewer',
+    role: 'User',
     password: ''
   });
 
@@ -62,7 +62,7 @@ function UserManagement() {
         username: '',
         fullName: '',
         email: '',
-        role: 'Viewer',
+        role: 'User',
         password: ''
       });
     }
@@ -216,7 +216,7 @@ function UserManagement() {
                 >
                   <MenuItem value="Admin">Admin</MenuItem>
                   <MenuItem value="Technician">Technician</MenuItem>
-                  <MenuItem value="Viewer">Viewer</MenuItem>
+                  <MenuItem value="User">User</MenuItem>
                 </Select>
               </FormControl>
               {/* Show password field only when creating new user */}

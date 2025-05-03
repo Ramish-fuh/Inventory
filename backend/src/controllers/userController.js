@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import Asset from '../models/Asset.js';
 import Log from '../models/Log.js';
 import SystemLog from '../models/SystemLog.js';
 import logger from '../utils/logger.js';
@@ -340,6 +341,36 @@ export const deleteUser = async (req, res) => {
       }
     }
 
+    // Update all assets assigned to this user
+    const assignedAssets = await Asset.find({ assignedTo: id });
+    for (const asset of assignedAssets) {
+      asset.status = 'Available';
+      asset.assignedTo = null;
+      await asset.save();
+
+      // Log each asset status change
+      await Log.create({
+        user: req.user.id,
+        action: 'Asset Unassigned',
+        category: 'Asset Management',
+        target: asset._id,
+        details: `Asset ${asset.name} (${asset.assetTag}) unassigned due to user deletion`
+      });
+
+      await SystemLog.create({
+        level: 'info',
+        message: 'Asset unassigned due to user deletion',
+        service: 'user-service',
+        metadata: {
+          requesterId: req.user._id,
+          assetId: asset._id,
+          assetTag: asset.assetTag,
+          deletedUserId: id
+        },
+        user: req.user._id
+      });
+    }
+
     await user.deleteOne();
 
     // Log the user deletion action
@@ -348,7 +379,7 @@ export const deleteUser = async (req, res) => {
       action: 'Delete User',
       category: 'User Management',
       target: user._id,
-      details: `User ${user.username} deleted.`
+      details: `User ${user.username} deleted. ${assignedAssets.length} assets unassigned.`
     });
 
     await SystemLog.create({
@@ -358,7 +389,8 @@ export const deleteUser = async (req, res) => {
       metadata: {
         requesterId: req.user._id,
         deletedUserId: id,
-        deletedUsername: user.username
+        deletedUsername: user.username,
+        unassignedAssetsCount: assignedAssets.length
       },
       user: req.user._id
     });
@@ -366,10 +398,14 @@ export const deleteUser = async (req, res) => {
     logger.info('User deleted successfully', {
       requesterId: req.user._id,
       deletedUserId: id,
-      username: user.username
+      username: user.username,
+      unassignedAssets: assignedAssets.length
     });
 
-    res.json({ message: 'User deleted successfully' });
+    res.json({ 
+      message: 'User deleted successfully',
+      unassignedAssets: assignedAssets.length
+    });
   } catch (error) {
     logger.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server Error' });
