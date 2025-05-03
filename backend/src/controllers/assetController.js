@@ -13,6 +13,7 @@ export const getAssets = async (req, res) => {
   try {
     logger.info('Fetching all assets', { 
       userId: req.user?._id,
+      userRole: req.user?.role,
       query: req.query 
     });
 
@@ -23,7 +24,6 @@ export const getAssets = async (req, res) => {
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
         { serialNumber: { $regex: search, $options: 'i' } }
       ];
     }
@@ -38,9 +38,18 @@ export const getAssets = async (req, res) => {
       query.status = status;
     }
 
-    // Filter by assigned user
-    if (assignedTo) {
-      // First find the user by name or username
+    // If it's a regular user, only show their assigned assets
+    if (req.user.role === 'User') {
+      query.assignedTo = new mongoose.Types.ObjectId(req.user._id);
+      logger.info('Filtering assets for user:', {
+        userId: req.user._id,
+        role: req.user.role,
+        query
+      });
+    }
+
+    // Filter by assigned user (for admin searches)
+    if (assignedTo && req.user.role === 'Admin') {
       const user = await User.findOne({
         $or: [
           { username: { $regex: assignedTo, $options: 'i' } },
@@ -51,23 +60,28 @@ export const getAssets = async (req, res) => {
       if (user) {
         query.assignedTo = user._id;
       } else {
-        // If no user found, return empty results
+        logger.warn('No user found for assignedTo filter:', { assignedTo });
         return res.json([]);
       }
     }
 
-    // If it's a regular user, only show their assigned assets
-    if (req.user.role === 'User') {
-      query.assignedTo = req.user._id;
-    }
-
     const assets = await Asset.find(query)
-      .populate('assignedTo', 'username fullName email')
+      .populate({
+        path: 'assignedTo',
+        select: 'username fullName email'
+      })
       .sort({ createdAt: -1 });
 
     logger.info('Assets fetched successfully', {
       count: assets.length,
-      userId: req.user?._id
+      userId: req.user?._id,
+      query,
+      userRole: req.user?.role,
+      assets: assets.map(a => ({
+        id: a._id,
+        name: a.name,
+        assignedTo: a.assignedTo?._id
+      }))
     });
 
     res.json(assets);
@@ -75,7 +89,8 @@ export const getAssets = async (req, res) => {
     logger.error('Error fetching assets', {
       error: error.message,
       stack: error.stack,
-      userId: req.user?._id
+      userId: req.user?._id,
+      query: req.query
     });
 
     await SystemLog.create({
@@ -589,5 +604,41 @@ export const exportToExcel = async (req, res) => {
   } catch (error) {
     logger.error('Error generating Excel:', error);
     res.status(500).json({ message: 'Error generating Excel report' });
+  }
+};
+
+// Test endpoint to check assigned assets
+export const checkAssignedAssets = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    const assets = await Asset.find({ assignedTo: userId })
+      .populate('assignedTo', 'username fullName email');
+
+    logger.info('Checking assigned assets', {
+      userId,
+      assetsFound: assets.length,
+      assets: assets.map(a => ({
+        id: a._id,
+        name: a.name,
+        status: a.status,
+        assignedTo: a.assignedTo?._id
+      }))
+    });
+
+    res.json({
+      count: assets.length,
+      assets: assets
+    });
+  } catch (error) {
+    logger.error('Error checking assigned assets', {
+      error: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ message: 'Error checking assigned assets' });
   }
 };

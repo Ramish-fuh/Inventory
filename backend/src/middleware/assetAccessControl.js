@@ -7,8 +7,18 @@ export const assetAccessControl = async (req, res, next) => {
     const method = req.method;
     const assetId = req.params.id;
 
+    logger.info('Asset access control check:', {
+      userId: req.user._id,
+      role,
+      method,
+      assetId,
+      path: req.path,
+      query: req.query
+    });
+
     // Admins have full access
     if (role === 'Admin') {
+      logger.info('Admin access granted', { userId: req.user._id });
       return next();
     }
 
@@ -25,7 +35,8 @@ export const assetAccessControl = async (req, res, next) => {
           logger.warn('Unauthorized asset access attempt', {
             userId: req.user._id,
             assetId,
-            role
+            role,
+            assignedTo: asset.assignedTo
           });
           return res.status(403).json({ message: 'Not authorized to view this asset' });
         }
@@ -37,6 +48,10 @@ export const assetAccessControl = async (req, res, next) => {
     if (method === 'GET') {
       // Regular users can only see their assigned assets
       if (role === 'User') {
+        logger.info('Filtering assets for user', {
+          userId: req.user._id,
+          currentQuery: req.query
+        });
         req.query.assignedTo = req.user._id;
       }
       return next();
@@ -61,6 +76,11 @@ export const assetAccessControl = async (req, res, next) => {
       }
 
       // Regular users cannot update assets
+      logger.warn('Non-technician attempting to update asset', {
+        userId: req.user._id,
+        role,
+        assetId
+      });
       return res.status(403).json({ message: 'Not authorized to update assets' });
     }
 

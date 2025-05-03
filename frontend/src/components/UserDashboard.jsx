@@ -19,23 +19,30 @@ function UserDashboard() {
   const canEdit = userRole === 'Technician';
 
   useEffect(() => {
+    console.log('Making API request with token:', localStorage.getItem('token'));
     apiClient.get('/api/assets')
       .then(response => {
+        console.log('API Response:', response.data);
         if (Array.isArray(response.data)) {
           setAssets(response.data);
           setDisplayedAssets(response.data);
+          console.log('Assets set:', response.data.length, 'items');
         } else {
           throw new Error('Invalid data format: Expected an array');
         }
         setLoading(false);
       })
       .catch(err => {
-        console.error('Error fetching assets:', err);
+        console.error('Error fetching assets:', {
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data,
+          headers: err.response?.headers
+        });
         if (err.response?.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('userRole');
           navigate('/login');
-          return;
         }
         setError('Failed to load assets. Please try again later.');
         setLoading(false);
@@ -44,6 +51,7 @@ function UserDashboard() {
 
   // Handle search and sort whenever the criteria change
   useEffect(() => {
+    console.log('Filtering assets:', { assets, searchQuery, sortBy, sortOrder });
     let filtered = [...assets];
     
     // Apply search filter
@@ -66,12 +74,17 @@ function UserDashboard() {
       if (typeof bValue === 'string') bValue = bValue.toLowerCase();
       
       if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
+        if (aValue < bValue) return -1;
+        if (aValue > bValue) return 1;
+        return 0;
       } else {
-        return aValue < bValue ? 1 : -1;
+        if (aValue < bValue) return 1;
+        if (aValue > bValue) return -1;
+        return 0;
       }
     });
 
+    console.log('Filtered assets:', filtered.length, 'items');
     setDisplayedAssets(filtered);
   }, [searchQuery, sortBy, sortOrder, assets]);
 

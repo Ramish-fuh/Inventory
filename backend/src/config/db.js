@@ -30,17 +30,25 @@ const monitorConnection = () => {
     logDbEvent('reconnected', 'Database connection reestablished');
   });
 
-  // Monitor for slow queries (>100ms)
-  mongoose.set('debug', async (collectionName, method, query) => {
+  // Monitor for slow queries (>100ms) and log all queries in development
+  mongoose.set('debug', async (collectionName, method, query, doc) => {
     const startTime = Date.now();
     try {
+      logger.debug('MongoDB Query', {
+        collection: collectionName,
+        method,
+        query: JSON.stringify(query),
+        doc: JSON.stringify(doc),
+        timestamp: new Date()
+      });
+
       const duration = Date.now() - startTime;
       if (duration > 100) {
         logger.warn('Slow MongoDB query detected', {
           collection: collectionName,
           method,
           duration,
-          query
+          query: JSON.stringify(query)
         });
 
         await SystemLog.create({
@@ -56,7 +64,7 @@ const monitorConnection = () => {
         });
       }
     } catch (error) {
-      logger.error('Error logging slow query', { error: error.message });
+      logger.error('Error logging query', { error: error.message });
     }
   });
 };
@@ -136,9 +144,12 @@ const connectDB = async () => {
   while (retryCount < maxRetries) {
     try {
       const startTime = Date.now();
-      logger.info('Attempting to connect to MongoDB', { attempt: retryCount + 1 });
+      logger.info('Attempting to connect to MongoDB', { 
+        attempt: retryCount + 1,
+        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/inventory'
+      });
 
-      const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/inventory', {
         useNewUrlParser: true,
         useUnifiedTopology: true,
         serverSelectionTimeoutMS: 5000,

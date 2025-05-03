@@ -119,7 +119,7 @@ function AssetView() {
                 {asset.assignedTo && (
                   <div className={styles.detailItem}>
                     <h3>Assigned To</h3>
-                    <p>{asset.assignedTo}</p>
+                    <p>{asset.assignedTo.fullName || asset.assignedTo.username}</p>
                   </div>
                 )}
                 {asset.location && (
