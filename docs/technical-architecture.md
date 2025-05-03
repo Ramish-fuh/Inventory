@@ -4,14 +4,16 @@
 
 ### Frontend Architecture
 
-The frontend is built using React with Vite, providing a modern and efficient development experience.
+The frontend is built using React with Vite, implementing role-based dashboards and access controls.
 
 #### Component Structure
 ```
 frontend/
 ├── src/
 │   ├── components/           # React components
-│   │   ├── Dashboard/       # Dashboard views
+│   │   ├── AdminDashboard/   # Admin-specific views
+│   │   ├── TechnicianDashboard/ # Technician views
+│   │   ├── UserDashboard/   # Regular user views
 │   │   ├── Asset/          # Asset management
 │   │   ├── Auth/          # Authentication
 │   │   └── Common/        # Shared components
@@ -26,6 +28,27 @@ frontend/
 - Axios for API communication
 - JWT for authentication
 - QR Scanner implementation
+
+#### Role-Based Interface
+- **Admin Dashboard**
+  - Full asset management capabilities
+  - User management interface
+  - System logs access
+  - Asset deletion and creation
+  - User role assignment
+
+- **Technician Dashboard**
+  - Asset viewing and editing
+  - Maintenance management
+  - QR code generation
+  - No access to user management or logs
+  - Cannot delete assets or change assignments
+
+- **User Dashboard**
+  - View assigned assets
+  - Asset details access
+  - QR code scanning
+  - Personal profile management
 
 #### Core Components
 - **Asset Management**
@@ -79,7 +102,7 @@ frontend/
 
 ### Backend Architecture
 
-The backend uses Node.js with Express, implementing a RESTful API architecture.
+The backend uses Node.js with Express, implementing a RESTful API architecture with strict access controls.
 
 #### Service Structure
 ```
@@ -100,6 +123,32 @@ backend/
 - Winston for logging
 - Nodemailer for emails
 - QR code generation
+
+#### Access Control Implementation
+
+**Middleware Layer**
+- JWT validation
+- Role verification
+- Resource access control
+- Operation authorization
+
+**Permission Matrix**
+```
+Operation          | Admin | Technician | User
+-------------------|--------|------------|-------
+View All Assets    |   ✓    |     ✓      |   ✗
+View Assigned      |   ✓    |     ✓      |   ✓
+Create Asset       |   ✓    |     ✗      |   ✗
+Edit Asset        |   ✓    |     ✓*     |   ✗
+Delete Asset      |   ✓    |     ✗      |   ✗
+Assign Asset      |   ✓    |     ✗      |   ✗
+Manage Users      |   ✓    |     ✗      |   ✗
+View Logs         |   ✓    |     ✗      |   ✗
+Generate QR       |   ✓    |     ✓      |   ✗
+Scan QR           |   ✓    |     ✓      |   ✓
+
+* Technicians can edit asset details but cannot change assignments or delete assets
+```
 
 #### Core Components
 - **Controllers**: Handle HTTP requests and responses

@@ -162,6 +162,13 @@ Inventory/
 - `Notification.js`: Notification model
 - `User.js`: User account model
 
+#### Middleware Layer
+- `assetAccessControl.js`: Role-based asset access control
+- `authMiddleware.js`: Authentication validation
+- `loggingMiddleware.js`: Request logging
+- `performanceLogging.js`: Performance monitoring
+- `setupRateLimiter.js`: Rate limiting protection
+
 #### Helper Layer
 - `mailer.js`: Email functionality
 - `notificationHelper.js`: Notification utilities
@@ -178,10 +185,15 @@ Inventory/
 - `index.js`: Entry point
 - `main.jsx`: React initialization
 
+#### Role-Based Components
+- `AdminDashboard.jsx`: Administrator interface
+- `TechnicianDashboard.jsx`: Technician interface
+- `UserDashboard.jsx`: Regular user interface
+
 #### Feature Components
 - **Asset Management**
-  - `AddAssetModal.jsx`: Asset creation
-  - `EditAssetForm.jsx`: Asset editing
+  - `AddAssetModal.jsx`: Asset creation (admin only)
+  - `EditAssetForm.jsx`: Asset editing (admin/technician)
   - `AssetView.jsx`: Asset details view
 
 - **Authentication**
@@ -189,13 +201,11 @@ Inventory/
   - `RecoverPassword.jsx`: Password recovery
   - `ResetPassword.jsx`: Password reset
 
-- **Dashboard**
-  - `AdminDashboard.jsx`: Admin view
-  - `UserDashboard.jsx`: User view
-  - `UserManagement.jsx`: User administration
+- **User Management**
+  - `UserManagement.jsx`: User administration (admin only)
 
 - **Utility Components**
-  - `Navigation.jsx`: Navigation bar
+  - `Navigation.jsx`: Role-based navigation bar
   - `NotificationBell.jsx`: Notification display
   - `QRScanner.jsx`: QR code scanning
   - `LogoutButton.jsx`: Session management
@@ -226,6 +236,7 @@ Inventory/
 3. Business logic in service layer
 4. Error handling middleware
 5. Centralized logging configuration
+6. Role-based access control middleware
 
 ### Frontend Standards
 1. Component-based architecture
@@ -233,6 +244,7 @@ Inventory/
 3. Props validation
 4. Error boundary implementation
 5. Context for state management
+6. Role-based routing and components
 
 ## Development Workflow
 

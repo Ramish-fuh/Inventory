@@ -8,15 +8,16 @@ The Asset Management System is a comprehensive solution for tracking and managin
 ### Frontend (React + Vite)
 - Modern React application using Vite for optimal performance
 - Material UI components for consistent design
+- Role-based dashboards (Admin, Technician, User)
 - Real-time notification system with bell icon interface
 - QR code scanning capabilities
-- Role-based access control with distinct user interfaces
 - Responsive design for various screen sizes
 
 ### Backend (Node.js + Express)
 - RESTful API architecture
 - MongoDB database with Mongoose ODM
 - JWT-based authentication system
+- Role-based access control
 - Automated email notifications via Nodemailer
 - Comprehensive logging system with Winston
 - QR code generation for asset tracking
@@ -66,22 +67,53 @@ npm run dev
 ## Features
 
 ### Asset Management
-- Create, read, update, and delete assets
+- Create, read, update, and delete assets (admin only)
 - Asset categorization and tagging
 - Location tracking
 - Maintenance scheduling
 - QR code generation for each asset
 - Export assets to PDF/Excel
 - Asset history tracking
-- Asset assignment/unassignment
+- Asset assignment/unassignment (admin only)
 
 ### User Management
-- Role-based access control (Admin and User roles)
+- Role-based access control with three distinct roles:
+  - Admin: Full system access and control
+  - Technician: Asset maintenance and updates
+  - User: View assigned assets only
 - Secure user authentication
 - Password recovery system with email verification
 - User activity logging
 - Profile management
 - Session management
+
+### Role Capabilities
+
+#### Administrator Role
+- Full system access and control
+- User management and role assignment
+- Asset creation and deletion
+- Asset assignment to users
+- System logs access
+- Export and reporting features
+- All technician and user capabilities
+
+#### Technician Role
+- View all assets in the system
+- Update asset details and maintenance info
+- Schedule and track maintenance
+- Generate QR codes for assets
+- Cannot delete assets or assign users
+- No access to user management or logs
+- No ability to create new assets
+
+#### User Role
+- View assigned assets only
+- Access personal dashboard
+- View asset details of assigned items
+- Scan QR codes for verification
+- Update personal profile
+- Cannot modify asset information
 
 ### Notifications
 - Real-time in-app notifications

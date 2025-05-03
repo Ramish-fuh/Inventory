@@ -14,10 +14,15 @@ A comprehensive solution for managing organizational assets with features for tr
 - Customizable asset categories and fields
 
 ### User Management
-- Role-based access control (Admin, Regular User)
+- Role-based access control (Admin, Technician, User)
 - Secure authentication with JWT
 - Password recovery system with email verification
 - User activity logging and audit trails
+
+### Access Controls
+- Admin: Full system access including user management and deletion capabilities
+- Technician: Asset viewing, editing, and maintenance management
+- User: View assigned assets and personal dashboard
 
 ### Notifications & Alerts
 - Real-time notification system with bell icon interface
